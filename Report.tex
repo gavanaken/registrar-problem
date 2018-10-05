@@ -32,15 +32,17 @@ Each iteration reduces the number of sets in $S$ by one. Once the number of sets
 
 \subsection{Pseudocode}
 \begin{algorithm}
-\SetKwFunction{genMatrix}{genMatrix}
+\SetKwFunction{Main}{Main}
 \SetKwProg{Fn}{Function}{}{}
-\Fn{\genMatrix{Preferences, numClasses, Teachers}}{
+\Fn{\Main{Preferences, numClasses, Teachers}}{
 let $n$ = len(numClasses);
 initialize $M$ = n x n 2-D array of all 0's;
 
 $M$ = setTeach($M$, $Teachers$);
 
 $M$ = setCost($M$, $Preferences$);
+
+createSets(M);
 
 
 }
@@ -83,6 +85,35 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
 }
 }
 }
+}
+\end{algorithm}
+
+\begin{algorithm}
+\SetKwFunction{createSets}{createSets}
+\SetKwProg{Fn}{Function}{}{}
+\Fn{\createSets{M}}{
+    // M is an $n$ by $n$ matrix
+    Initialize a union-find object, $S$ \\
+    \For{each class}{
+         Initialize a disjoint set of size one containing that class, stored in $S$ \\
+    }
+    Initialize a priority queue $P$ with all values from M in it \\
+    \While{numrow(M) $\geq$ the number of time slots}{
+        Pop $(S_i, S_j)$ \\
+        \If{$|S_i|+|S_j| \leq$ the number of classrooms}{
+            Add column $j$ to column $i$ \\
+            Add row $j$ to row $i$ \\
+            Delete column and row $j$ \\
+        }
+    }
+    \For{each disjoint set $s$ in $S$}{
+        assign $s$ to an unassigned time slot
+        // write to a file
+        \\
+        \For {each class $c$ in $s$}{
+            assign $c$ to an unassigned classroom
+        }
+    }
 }
 \end{algorithm}
 
