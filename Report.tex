@@ -26,9 +26,57 @@ Let $M$ denote an $n$x$n$ 2-D matrix, where $n$ is the number of classes. Initia
 
 \subsection{Pseudocode}
 \begin{algorithm}
-\SetKwFunction{foo}{foo}
+\SetKwFunction{genMatrix}{genMatrix}
 \SetKwProg{Fn}{Function}{}{}
-\Fn{\foo{arg1, list1, list2}}{
+\Fn{\genMatrix{Preferences, numClasses, Teachers}}{
+let $n$ = len(numClasses);
+initialize $M$ = n x n 2-D array of all 0's;
+
+$M$ = setTeach($M$, $Teachers$);
+
+$M$ = setCost($M$, $Preferences$);
+
+
+}
+\end{algorithm}
+
+\begin{algorithm}
+\SetKwFunction{setTeach}{setTeach}
+\SetKwProg{Fn}{Function}{}{}
+\Fn{\setTeach{M, Teachers}}{
+sort $Teachers$ by teacher id; // Teachers is a list of class-teacher pairs
+
+initialize $last$ = Teachers[0];
+
+\While{$i=1 < len(Teachers)$} {
+let $teach$ = Teachers[i];
+
+\If{teach[1] == last[1]} {
+set $M$[teach[0]][last[0]] to $infinity$; // teacher teaches both classes
+}
+set $last$ = Teachers[i]; i++;
+}
+\Return{$M$}
+}
+\end{algorithm}
+
+\begin{algorithm}
+\SetKwFunction{setCost}{setCost}
+\SetKwProg{Fn}{Function}{}{}
+\Fn{\setCost{M, Preferences}}{
+\For{student in Preferences} {
+// Assume Preferences = [[p1,p2,p3,p4],[p1,p2,p3,p4],...]
+
+\For{i in range(0:4)} {
+{
+\For{j in range(i+1:4)} {
+let $c1$ = student[i]; let $c2$ = student[j];
+
+$M$[$c1$][$c2$] += ((4-i) + (4-j))
+}
+}
+}
+}
 }
 \end{algorithm}
 
