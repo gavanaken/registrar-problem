@@ -86,6 +86,27 @@ Time Analysis goes here. $O(n^2)$
 
 \subsection{Discussion}
 
+We had a relatively good intuition when approaching this problem that we had to somehow compute a cost associated with having classes at the same time. One option we considered was to weight the cost according to how many students preferred a given class. In other words, for every student that lists some class as their first choice, add a cost of 4 to that class. For every student who lists it as their second choice, add a cost of 3, etc. We realized that although this would determine a set of highly preferred classes that may have a number of students wanting to take them (and thus should not overlap), it loses the logic about what each student wants. A counter example to our initial approach is that there are two popular courses but they occur in different majors. There may be a lot of students who prefer those classes, but few students will desire to take both courses. Thus, it would be reasonable for those classes to overlap. This led us to our current algorithm which makes decisions based on the cost to each student of having two classes overlap. The aspects of this problem which made it difficult to determine an algorithm are:
+\begin{enumerate}
+\item{How do we quantify the cost of two classes overlapping?}
+\begin{itemize}
+\item{We decided to set it up such that merging courses is a direct function of their collective priorities}
+\item{An artifact of this is that merging classes 1 and 4 has the same cost as merging classes 2 and 3}
+\end{itemize}
+\item{After a minimum cost is found and then a merge takes place, the cost of merging any third class with the new set will have to include the total merge cost of the third class with every class already in the set} 
+\begin{itemize}
+\item{This fact led us to the idea of merging matrix rows/columns to reflect the additive costs when sets are merged}
+\end{itemize}
+\item{A given teacher cannot teach more than one class at a given time}
+\begin{itemize}
+\item{This issue led us to perform the initialization step of setting matrix cells coorresponding to classes taught by the same teacher to Infinity}
+\end{itemize}
+\item{A given time slot cannot have more classes scheduled than the given number of rooms}
+\begin{itemize}
+\item{Because of this, we decided to check to see if this condition is broken and if so, skip that merge}
+\end{itemize}
+\end{enumerate}
+This algorithm is {\bf greedy} because each time work is done, it generally follows a simple rule: merge sets with the lowest merge cost (if a merge is valid). This algorithm is not too different from constructing a minimum spanning tree using Kruskal's algorithm. Classes can be thought of as nodes in a graph and merge cost can be thought of as the weight of the edge between nodes. Similar to a minimum spanning tree, minimum edge weights are selected as the sets are constructed (merged). 
 \section*{Collaboration}
 Name1, Name2, ...
 
