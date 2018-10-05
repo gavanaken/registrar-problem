@@ -1,0 +1,69 @@
+warning: LF will be replaced by CRLF in Report.tex.
+The file will have its original line endings in your working directory.
+[1mdiff --git a/Report.pdf b/Report.pdf[m
+[1mindex e9d29d8..f8e343e 100644[m
+[1m--- a/Report.pdf[m
+[1m+++ b/Report.pdf[m
+[36m@@ -1,13 +1,28 @@[m
+                      CS340 - Registrar Project[m
+ [m
+                     Greg Van Aken, Conor Stuart Roe, Russell Gerhard[m
+[31m-                                         September 28, 2018[m
+[32m+[m
+[32m+[m[32m                                           October 4, 2018[m
+ [m
+ 1 Checkpoint 1[m
+ [m
+ 1.1 Description[m
+ [m
+[31m-Description goes here.[m
+[32m+[m[32mLet M denote an nxn 2-D matrix, where n is the number of classes. Initialize M such that[m
+[32m+[m[32mall values are 0. Iterate over the teacher-class list. For each pair of classes (c, c ) taught[m
+[32m+[m[32mby the same teacher, set M [c][c ] to Inﬁnity. Iterate over each student’s preference list.[m
+[32m+[m[32mFor each class pair (ci, cj) in a given student’s preference list, (where i and j represent[m
+[32m+[m[32mindices/preferences) increment M [ci][cj] by ((4-i) + (4-j)). In other words, compute the[m
+[32m+[m[32meﬀective cost to each student of overlapping two courses. If i is 0 and j is 1, the student[m
+[32m+[m[32mprefers both of those classes highly and their overlap will be a cost of 7, much higher[m
+[32m+[m[32mthan if i were 2 and j were 3 (cost of 3). Classes taught by the same teacher mustn’t, by[m
+[32m+[m[32mdeﬁnition, occur at the same time, so their overlap cost is inﬁnite. Assemble each class[m
+[32m+[m[32minto its own disjoint set in a collection of sets S. While the size of S > the number of[m
+[32m+[m[32mclass times, merge sets with the minimum overlap cost, according to M . When a merge[m
+[32m+[m[32mtakes place between two sets s and s to form set s , for each class pair c and c in s , for[m
+[32m+[m[32meach class c in M [c], increment M [c][c ] by (M [c][c ] + M [c ][c ]) and for each class c in[m
+[32m+[m[32mM [c ], increment M [c ][c ] by (M [c][c ] + M [c ][c]). Distribute classes such that merged[m
+[32m+[m[32msets occur during the same time slot.[m
+ [m
+ 1.2 Pseudocode[m
+ [m
+[36m@@ -17,11 +32,12 @@[m [mDescription goes here.[m
+ [m
+ Time Analysis goes here. O(n2)[m
+ [m
+[31m-1.4 Discussion[m
+[32m+[m[32m                                1[m
+[32m+[m[32m1.4 Discussion[m
+ [m
+ Collaboration[m
+ [m
+ Name1, Name2, ...[m
+ [m
+[31m-                                                          1[m
+[32m+[m[32m                                                          2[m
+ [m
+\ No newline at end of file[m
+[1mdiff --git a/Report.synctex.gz b/Report.synctex.gz[m
+[1mindex 80d26cc..4b8a543 100644[m
+Binary files a/Report.synctex.gz and b/Report.synctex.gz differ
+[1mdiff --git a/Report.tex b/Report.tex[m
+[1mindex caeaa2f..2998438 100644[m
+[1m--- a/Report.tex[m
+[1m+++ b/Report.tex[m
+[36m@@ -22,7 +22,7 @@[m
+ [m
+ \section{Checkpoint 1}[m
+ \subsection{Description}[m
+[31m-Description goes here.[m
+[32m+[m[32mLet $M$ denote an $n$x$n$ 2-D matrix, where $n$ is the number of classes. Initialize $M$ such that all values are 0. Iterate over the teacher-class list. For each pair of classes ($c$, $c^\prime$) taught by the same teacher, set $M$[$c$][$c^\prime$] to {\it Infinity}. Iterate over each student's preference list. For each class pair ($c_i$, $c_j$) in a given student's preference list, (where i and j represent indices/preferences) increment $M$[$c_i$][$c_j$] by ((4-i) + (4-j)). In other words, compute the effective $cost$ to each student of overlapping two courses. If $i$ is 0 and $j$ is 1, the student prefers both of those classes highly and their overlap will be a cost of 7, much higher than if $i$ were 2 and $j$ were 3 (cost of 3). Classes taught by the same teacher mustn't, by definition, occur at the same time, so their overlap cost is infinite. Assemble each class into its own disjoint set in a collection of sets $S$. While the size of $S$ $>$ the number of class times, merge sets with the minimum overlap cost, according to $M$. When a merge takes place between two sets $s$ and $s^\prime$ to form set $s^{\prime\prime}$, for each class pair $c$ and $c^\prime$ in $s^{\prime\prime}$, for each class $c^{\prime\prime}$ in $M$[$c$], increment $M$[$c$][$c^{\prime\prime}$] by ($M$[$c$][$c^\prime$] + $M$[$c^{\prime\prime}$][$c^\prime$]) and for each class $c^{\prime\prime\prime}$ in $M$[$c^\prime$], increment $M$[$c^\prime$][$c^{\prime\prime\prime}$] by ($M$[$c$][$c^{\prime}$] + $M$[$c^{\prime\prime\prime}$][$c$]). Distribute classes such that merged sets occur during the same time slot.[m
+ [m
+ \subsection{Pseudocode}[m
+ \begin{algorithm}[m
