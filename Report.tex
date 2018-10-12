@@ -22,19 +22,27 @@
 
 \section{Checkpoint 1}
 \subsection{Description}
-Let $M$ denote an $n$x$n$ 2-D matrix, where $n$ is the number of classes. Initialize $M$ such that all values are 0. Iterate over the teacher-class list. For each pair of classes ($c$, $c^\prime$) taught by the same teacher, set $M$[$c$][$c^\prime$] to {\it Infinity}. Iterate over each student's preference list. For each class pair ($c_i$, $c_j$) in a given student's preference list, (where i and j represent indices/preferences) increment $M$[$c_i$][$c_j$] by ((4-i) + (4-j)). In other words, compute the effective $cost$ to each student of overlapping two courses. If $i$ is 0 and $j$ is 1, the student prefers both of those classes highly and their overlap will be a cost of 7, much higher than if $i$ were 2 and $j$ were 3 (cost of 3). Classes taught by the same teacher mustn't, by definition, occur at the same time, so their overlap cost is infinite. Assemble each class into its own disjoint set in a collection of sets $S$. While the size of $S$ $>$ the number of class times, merge sets with the minimum overlap cost, according to $M$. When a merge takes place between two sets $s$ and $s^\prime$ to form set $s^{\prime\prime}$, for each class pair $c$ and $c^\prime$ in $s^{\prime\prime}$, for each class $c^{\prime\prime}$ in $M$[$c$], increment $M$[$c$][$c^{\prime\prime}$] by ($M$[$c$][$c^\prime$] + $M$[$c^{\prime\prime}$][$c^\prime$]) and for each class $c^{\prime\prime\prime}$ in $M$[$c^\prime$], increment $M$[$c^\prime$][$c^{\prime\prime\prime}$] by ($M$[$c$][$c^{\prime}$] + $M$[$c^{\prime\prime\prime}$][$c$]). Distribute classes such that merged sets occur during the same time slot.
+This algorithm works by assigning conflict scores to each pair of classes based on teacher assignments and student preferences and assigning each class to be the sole member of a set, then continuously merging sets of classes (designating them to occupy the same time slot) in a greedy manner, on the basis of lowest total set conflict scores. \\
+
+Call the number of classes as $n$. Initialize a "conflict matrix" $M$, an $n \times n$ 2-D matrix for storing conflict scores, setting all values to 0. Additionally, create a union-find object $S$ and assign each class to its own set within $S$. For each teacher, each pair of classes they teach ($c$, $c^\prime$) definitely cannot occupy the same time slot, so the conflict scores $M[c][c^\prime]$ and $M[c^\prime][c]$ are set to {\it Infinity} (or some sufficiently large number). Then each student's preference list is iterated through, and for each class pair $(c_i, c_j)$ in a given student's preference list, compute the conflict score ((4-i) + (4-j)) for that pair (for example, if $i$ is 0 and $j$ is 1, the student prefers both of those classes highly and their overlap will be a cost of 7) and increment $M[c_i][c_j]$ and $M[c_j][c_i]$ by that conflict score. \\
+
+Create a priority queue $Q$ with a min heap to keep track of the pair of sets with lowest conflict score, and add each cell not along the diagonal to $Q$. While the number of sets in $S$ is greater the number of class times, classes still haven't been grouped into sufficiently few time slots, so merging must continue. At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $Q$. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged (otherwise that pair is thrown out of the priority queue). When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row $j$ is added to row $i$, column $j$ is added to column $i$, and row $j$ and column $j$ are deleted. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
+
+Each iteration reduces the number of sets in $S$ by one. Once the number of sets in $S$ is equal the number of time slots, each class set can be arbitrarily assigned to a time slot.
 
 \subsection{Pseudocode}
 \begin{algorithm}
-\SetKwFunction{genMatrix}{genMatrix}
+\SetKwFunction{Main}{Main}
 \SetKwProg{Fn}{Function}{}{}
-\Fn{\genMatrix{Preferences, numClasses, Teachers}}{
+\Fn{\Main{Preferences, numClasses, Teachers}}{
 let $n$ = len(numClasses);
 initialize $M$ = n x n 2-D array of all 0's;
 
 $M$ = setTeach($M$, $Teachers$);
 
 $M$ = setCost($M$, $Preferences$);
+
+createSets(M);
 
 
 }
@@ -80,12 +88,62 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
 }
 \end{algorithm}
 
+\begin{algorithm}
+\SetKwFunction{createSets}{createSets}
+\SetKwProg{Fn}{Function}{}{}
+\Fn{\createSets{M}}{
+    // M is an $n$ by $n$ matrix
+    Initialize a union-find object, $S$ \\
+    \For{each class}{
+         Initialize a disjoint set of size one containing that class, stored in $S$ \\
+    }
+    Initialize a priority queue $P$ with all values from M in it \\
+    \While{numrow(M) $\geq$ the number of time slots}{
+        Pop $(S_i, S_j)$ \\
+        \If{$|S_i|+|S_j| \leq$ the number of classrooms}{
+            Add column $j$ to column $i$ \\
+            Add row $j$ to row $i$ \\
+            Delete column and row $j$ \\
+        }
+    }
+    \For{each disjoint set $s$ in $S$}{
+        assign $s$ to an unassigned time slot
+        // write to a file
+        \\
+        \For {each class $c$ in $s$}{
+            assign $c$ to an unassigned classroom
+        }
+    }
+}
+\end{algorithm}
+
 \subsection{Time Analysis}
 Time Analysis goes here. $O(n^2)$
 
 
 \subsection{Discussion}
 
+We had a relatively good intuition when approaching this problem that we had to somehow compute a cost associated with having classes at the same time. One option we considered was to weight the cost according to how many students preferred a given class. In other words, for every student that lists some class as their first choice, add a cost of 4 to that class. For every student who lists it as their second choice, add a cost of 3, etc. We realized that although this would determine a set of highly preferred classes that may have a number of students wanting to take them (and thus should not overlap), it loses the logic about what each student wants. A counter example to our initial approach is that there are two popular courses but they occur in different majors. There may be a lot of students who prefer those classes, but few students will desire to take both courses. Thus, it would be reasonable for those classes to overlap. This led us to our current algorithm which makes decisions based on the cost to each student of having two classes overlap. The aspects of this problem which made it difficult to determine an algorithm are:
+\begin{enumerate}
+\item{How do we quantify the cost of two classes overlapping?}
+\begin{itemize}
+\item{We decided to set it up such that merging courses is a direct function of their collective priorities}
+\item{An artifact of this is that merging classes 1 and 4 has the same cost as merging classes 2 and 3}
+\end{itemize}
+\item{After a minimum cost is found and then a merge takes place, the cost of merging any third class with the new set will have to include the total merge cost of the third class with every class already in the set} 
+\begin{itemize}
+\item{This fact led us to the idea of merging matrix rows/columns to reflect the additive costs when sets are merged}
+\end{itemize}
+\item{A given teacher cannot teach more than one class at a given time}
+\begin{itemize}
+\item{This issue led us to perform the initialization step of setting matrix cells coorresponding to classes taught by the same teacher to Infinity}
+\end{itemize}
+\item{A given time slot cannot have more classes scheduled than the given number of rooms}
+\begin{itemize}
+\item{Because of this, we decided to check to see if this condition is broken and if so, skip that merge}
+\end{itemize}
+\end{enumerate}
+This algorithm is {\bf greedy} because each time work is done, it generally follows a simple rule: merge sets with the lowest merge cost (if a merge is valid). This algorithm is not too different from constructing a minimum spanning tree using Kruskal's algorithm. Classes can be thought of as nodes in a graph and merge cost can be thought of as the weight of the edge between nodes. Similar to a minimum spanning tree, minimum edge weights are selected as the sets are constructed (merged). 
 \section*{Collaboration}
 Name1, Name2, ...
 
