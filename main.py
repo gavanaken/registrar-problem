@@ -20,7 +20,7 @@ class Constraints:
         self.numTeach = constraints_raw[cur].split('\t')[-1]
         cur += 1
         while re.search("[0-9]+", constraints_raw[cur]):
-            self.teachers.append((constraints_raw[cur].split('\t')[0],constraints_raw[cur].split('\t')[1]))
+            self.teachers.append((int(constraints_raw[cur].split('\t')[0]),int(constraints_raw[cur].split('\t')[1])))
             cur += 1
 
     def __str__(self):
@@ -56,7 +56,7 @@ def setTeach(M, teachers):
     while i < len(teachers):
         teach = teachers[i]
         if teach[0] == last[0]: # same teacher
-            M[teach[1]-1,last[1]-1] = math.inf
+            M[int(teach[1]-1),int(last[1]-1)] = 1000 #math.inf
         last = teachers[i]
         i+=1
     return M
@@ -73,15 +73,14 @@ def setCost(M, preferences):
     return M
 
 
+
 def main():
     constraints, preferences = parse_args()
     teachers = constraints.teachers
     n = int(constraints.numClass)
     M = np.zeros((n,n))
     M = setTeach(M, teachers)
-    print(M)
     M = setCost(M, preferences.prefLists)
-    print(M)
 
     
 
