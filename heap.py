@@ -1,12 +1,13 @@
 class MinBinHeap:
-    def __init__(self,s):
+    def __init__(self,s=[],key=lambda x: x):
         self.root = None
+        self.key = key
         for item in s:
             self.push(item)
 
     def push(self,item):
         if self.root is None:
-            self.root = MinBinNode(item)
+            self.root = MinBinNode(item,self.key)
         else:
             self.root.push(item)
 
@@ -19,24 +20,25 @@ class MinBinHeap:
         return("\n".join(lines))
 
 class MinBinNode:
-    def __init__(self,_val):
-        self.val = _val
+    def __init__(self,val,key):
+        self.val = val
+        self.key = key
         self.right = None
         self.left = None
         self.balance = 0
 
     def push(self,newval):
-        if self.val < newval:
+        if self.key(self.val) < self.key(newval):
             to_push = newval
         else:
             to_push = self.val
             self.val = newval
 
         if self.left is None:
-            self.left = MinBinNode(to_push)
+            self.left = MinBinNode(to_push, self.key)
             self.balance -= 1
         elif self.right is None:
-            self.right = MinBinNode(to_push)
+            self.right = MinBinNode(to_push, self.key)
             self.balance += 1
         elif self.balance >= 0:
             self.left.push(to_push)
@@ -55,7 +57,7 @@ class MinBinNode:
         elif self.right is None:
             self.val, self.left = self.left.pop()
             self.balance += 1
-        elif self.left.val < self.right.val:
+        elif self.key(self.left.val) < self.key(self.right.val):
             self.val, self.left = self.left.pop()
             self.balance += 1
         else:
@@ -77,3 +79,10 @@ class MinBinNode:
         s = str(self.val).ljust(l," ")
         combined = [s] + combined
         return combined
+
+if __name__ == "__main__":
+    pairs = [(0,9),(1,8),(2,7),(3,6),(4,5),(5,4),(6,3),(7,2),(8,1),(9,0)]
+    mbh0 = MinBinHeap(pairs, key=lambda x: x[0])
+    mbh1 = MinBinHeap(pairs, key=lambda x: x[1])
+    print(mbh0)
+    print(mbh1)

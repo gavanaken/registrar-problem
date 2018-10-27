@@ -1,8 +1,11 @@
-class unionfind:
+class UnionFind:
         # _values can be set or list
-        def __init__(self, _values):
-                assert(len(set(_values)) == len(_values)) # make sure input has no duplicates
-                self.valuesl = list(_values)
+        def __init__(self, values, maxSetSize = float("inf")):
+                assert(len(set(values)) == len(values)) # make sure input has no duplicates
+                self.valuesl = list(values)
+                self.numSets = len(self.valuesl)
+                self.setSizes = [1]*self.numSets
+                self.maxSetSize = maxSetSize
                 self.parent = list(range(len(self.valuesl)))
                 self.valuesd = dict(zip(self.valuesl,self.parent))
 
@@ -20,14 +23,23 @@ class unionfind:
                 j = self.valuesd[w]
                 i = self.findindex(i)
                 j = self.findindex(j)
-                if i != j: self.parent[i] = j
+                if i != j and (self.setSizes[i] + self.setSizes[j]) <= self.maxSetSize:
+                        self.parent[i] = j
+                        self.setSizes[j] = self.setSizes[i] + self.setSizes[j]
+                        self.setSizes[i] = None
+                        self.numSets -= 1
 
         def issame(self, i, j):
                 return self.find(i) == self.find(j)
 
         def groups(self):
-                r = range(len(self.parent))
-                return [[j for j in r if self.issame(j, i)] for i in r if i == self.parent[i]]
+                g = {}
+                for i in range(len(self.valuesl)):
+                        setID = self.findindex(i)
+                        _g = g.get(setID,set())
+                        _g.add(self.valuesl[i])
+                        g[setID] = _g
+                return list(g.values())
 
         @staticmethod
         def isconnected(l, u = None):
@@ -51,7 +63,7 @@ class unionfind:
 
 # this corner case demonstrates how a single find operation can take O(n)
 if __name__=="__main__":
-        uf = unionfind({"hells","bells","back","in","black"})
+        uf = UnionFind({"hells","bells","back","in","black"})
         print(uf.parent)
         for i in range(len(uf.valuesl)-1):
                 uf.union(uf.valuesl[i],uf.valuesl[i+1])
