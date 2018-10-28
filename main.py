@@ -1,7 +1,6 @@
 import sys, re, math
 import numpy as np
-from unionfind import UnionFind
-from heap import MinBinHeap
+from data_structures import UnionFind, MinBinHeap, LinkedList
 constraintsFile = None
 preferencesFile = None
 
