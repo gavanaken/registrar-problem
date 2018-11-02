@@ -20,15 +20,13 @@
 \begin{document}
 \maketitle
 
-\section{Checkpoint 1}
+\section{Checkpoint 2}
 \subsection{Description}
 This algorithm works by assigning conflict scores to each pair of classes based on teacher assignments and student preferences and assigning each class to be the sole member of a set, then continuously merging sets of classes (designating them to occupy the same time slot) in a greedy manner, on the basis of lowest total set conflict scores. \\
 
-Call the number of classes as $n$. Initialize a "conflict matrix" $M$, an $n \times n$ 2-D matrix for storing conflict scores, setting all values to 0. Additionally, create a union-find object $S$ and assign each class to its own set within $S$. For each teacher, each pair of classes they teach ($c$, $c^\prime$) definitely cannot occupy the same time slot, so the conflict scores $M[c][c^\prime]$ and $M[c^\prime][c]$ are set to {\it Infinity} (or some sufficiently large number). Then each student's preference list is iterated through, and for each class pair $(c_i, c_j)$ in a given student's preference list, compute the conflict score ((4-i) + (4-j)) for that pair (for example, if $i$ is 0 and $j$ is 1, the student prefers both of those classes highly and their overlap will be a cost of 7) and increment $M[c_i][c_j]$ and $M[c_j][c_i]$ by that conflict score. \\
+Call the number of classes as $n$. Initialize a "conflict matrix" $M$, an $n \times n$ 2-D matrix for storing conflict scores, setting all values to 0. Additionally, create a union-find object $S$ and assign each class to its own set within $S$. For each teacher, each pair of classes they teach ($c$, $c^\prime$) definitely cannot occupy the same time slot, so the conflict scores $M[c][c^\prime]$ is set to {\it Infinity} (or some sufficiently large number). Then each student's preference list is iterated through, and for each class pair $(c, c^\prime)$ in a given student's preference list, compute the conflict score ((4-index($c$)) + (4-index($c^\prime$))) for that pair (for example, if $c$ is in position 0 (top choice) and $c^\prime$ is in position 1 (next choice), the student prefers both of those classes highly and their overlap will be a cost of 7) and increment $M[c_i][c_j]$  by that conflict score. To ensure that we only need to use the upper triangle of the matrix, we will adopt the convention of always indexing such that $i < j$. \\
 
-Create a priority queue $Q$ with a min heap to keep track of the pair of sets with lowest conflict score, and add each cell not along the diagonal to $Q$. Sets are identified with unique group ID numbers, and as new sets are created by merging, they are given incrementally larger group ID numbers. While the number of sets in $S$ is greater than the number of class times, classes still haven't been grouped into sufficiently few time slots, so merging must continue. \\
-
-At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $Q$. It is a common occurrence that oe or both sets specified by $s_i$ and $s_j$ no longer "exist" - that is, the sets they represent have already been merged with some other set, in which case the pair is disregarded. Otherwise, an attempt is made to merge the sets. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged, otherwise that pair is also simply disregarded. When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row and column $j$ are added to row and column $i$, and $i$ is designated as the repsentative row/column of group $s_k$. Row/column $j$ continue to exist to avoid matrix resizing, but they are never again looked at. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
+Create a priority queue $Q$ with a min heap to keep track of the pair of sets with lowest conflict score, and add each cell not along the diagonal to $Q$. While the number of sets in $S$ is greater the number of class times, classes still haven't been grouped into sufficiently few time slots, so merging must continue. At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $Q$. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged (otherwise that pair is thrown out of the priority queue). When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row $j$ is added to row $i$, column $j$ is added to column $i$, and row $j$ and column $j$ are deleted. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
 
 Each iteration reduces the number of sets in $S$ by one. Once the number of sets in $S$ is equal the number of time slots, each class set can be arbitrarily assigned to a time slot.
 
@@ -56,21 +54,21 @@ createSets(M);
 \Fn{\setTeach{M, Teachers}}{
 sort $Teachers$ by teacher id; // Teachers is a list of class-teacher pairs
 
-initialize $last$ = Teachers[0];
+initialize $prev$ = Teachers[0];
 
 \While{$i=1 < len(Teachers)$} {
-let $teach$ = Teachers[i] \\
-\If{teach[1] == last[1]} {
-set $M$[teach[0]][last[0]] to $infinity$; // teacher teaches both classes \\
+let $teach$ = Teachers[i];
+
+\If{teach[1] == prev[1]} {
+set $M$[teach[0]][prev[0]] to $infinity$; // teacher teaches both classes
 }
-set $last$ = Teachers[i] \\
-i++\\
+set $prev$ = Teachers[i]; i++;
 }
 \Return{$M$}
 }
 \end{algorithm}
 
-\begin{algorithm}[H]
+\begin{algorithm}
 \SetKwFunction{setCost}{setCost}
 \SetKwProg{Fn}{Function}{}{}
 \Fn{\setCost{M, Preferences}}{
@@ -90,47 +88,38 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
 }
 \end{algorithm}
 
-\begin{algorithm}[H]
+\begin{algorithm}
 \SetKwFunction{createSets}{createSets}
 \SetKwProg{Fn}{Function}{}{}
 \Fn{\createSets{M}}{
-    \# M is an $n$ by $n$ matrix \\
+    // M is an $n$ by $n$ matrix
     Initialize a union-find object, $S$ \\
     \For{each class}{
          Initialize a disjoint set of size one containing that class, stored in $S$ \\
     }
     Initialize a priority queue $P$ with all values from M in it \\
-    \While{number of sets in $S$ $\geq$ the number of time slots}{
+    \While{numrow(M) $\geq$ the number of time slots}{
         Pop $(S_i, S_j)$ \\
-	\If {either $S_i$ or $S_j$ has already been merged} {pass}
-        \ElseIf{$|S_i|+|S_j| \leq$ the number of classrooms}{
-            merge $S_k = S_i \cup S_j$ \\
-            Add row and column $j$ to row and column $i$ \\
-            Designate row and column $i$ as the location of $S_k$'s conflict scores \\
-            Push all of $S_k$'s conflict scores to $P$ \\
+        \If{$|S_i|+|S_j| \leq$ the number of classrooms}{
+            Add column $j$ to column $i$ \\
+            Add row $j$ to row $i$ \\
+            Delete column and row $j$ \\
         }
     }
     \For{each disjoint set $s$ in $S$}{
-        assign $s$ to an unassigned time slot \\
+        assign $s$ to an unassigned time slot
+        // write to a file
+        \\
         \For {each class $c$ in $s$}{
             assign $c$ to an unassigned classroom
         }
     }
-    \# write output to a file \\
 }
 \end{algorithm}
 
 \subsection{Time Analysis}
+Time Analysis goes here. $O(n^2)$
 
-Call the number of teachers $t$, the number of students $s$, and the number of classes $n$. \\
-
-setTeach contains a sort of teachers, which takes $O(t$log$t)$ time. Then it iterates over teachers performing constant time operations, so taking $O(t)$ time. Overall, setTeach is $O(t$log$t)$. \\
-
-setCost contains a triply nested loop, but the number of loops of the two inner loops is fixed rather than related to any input. Specifically, six innermost loops occur per student. Thus the total time is $O(s)$. \\
-
-createSets is a more complex function. The way it is written, initialization of the Union-Find, which contains one set per class, is $O(n)$. Initializing the priority queue is constant, but pushing all $O(n^2)$ values of $M$ to it is $O(n^2$log$(n^2)) = O(n^2$log$n)$. All sets must be merged by the time the priority queue is empty, so the maximum number of iterations of the \textbf{while} is no more than the maximum number of entries ever created in the priority queue $P$. Since every group merge reduces the number of class groups by 1, at most $n-1$ merges may take place, so at most $2n-1$ groups can ever be created before all classes are in one group. Each conflict score is between two groups, so the total number of possible conflicts to store in $P$ is $O((2n-1)^2) = O(n^2)$. The time of popping from $P$ is $O($log$(n^2)) = O($log$n)$. Checking whether a group has already been merged, checking the group sizes of $S_i$ and $S_j$, and merging sets are all constant time with our data structures. Adding rows and pushing them to $P$ can occur in total as many times as there are possible conflict scores, again $O(n^2)$, so it does not actually increase the time complexity of the \textbf{while}. Overall the most complex operations that occurs for every loop are the pop and push to $P$, which are $O($log$n)$, so the total complexity of the \textbf{while} is $O(n^2$log$n)$. Lastly, the double \textbf{for} iterates over all classes, performing a constant time operation of assignment, so its complexity is $O(n)$. The dominating complexity of createSets is $O(n^2$log$n)$. \\
-
-Each function is performed once during the algorithm's run, so the time complexity is their sum $O(t+s+n^2$log$n)$. Assuming that the number of classes taught by each teacher closely hews to an average, the number of teachers is linear relative to the number of classes - under this assumption, the algorithm is $O(s + n^2$log$n)$. \\
 
 \subsection{Discussion}
 
@@ -155,6 +144,18 @@ We had a relatively good intuition when approaching this problem that we had to 
 \end{itemize}
 \end{enumerate}
 This algorithm is {\bf greedy} because each time work is done, it generally follows a simple rule: merge sets with the lowest merge cost (if a merge is valid). This algorithm is not too different from constructing a minimum spanning tree using Kruskal's algorithm. Classes can be thought of as nodes in a graph and merge cost can be thought of as the weight of the edge between nodes. Similar to a minimum spanning tree, minimum edge weights are selected as the sets are constructed (merged). 
+
+\subsection{Implementation}
+We chose to implement this algorithm in Python. Much of the implementation followed directly from our design and pseudocode. We were able to utilize the {\it unionfind} package hosted on {\it https://pypi.org} (licensed to The Python Software Foundation). We needed to modify the implementation slightly to allow for sets to contain more information (class IDs). We also implemented our own min heap to serve as the priority queue. There was one key addition to the algorithm we noticed when attempting to implement. When a set is popped from the priority queue, it's possible that it has already been {\it unioned} with a previously popped set (which would have then been pushed back onto the queue). Thus, we keep track of what has been {\it unioned} and if we pop a set that has been {\it unioned} already, we throw it away and continue with the next set on the queue. This change has been added to our description and pseudocode.
+
+\subsection{Experimental Analysis (WIP)}
+After an initial implementation, we have determined that the algorithm works for the set of basic data. However, in porting this algorithm to real data, we have determined that there are a few extra elements to consider. Most notably, we have concluded that our current algorithm will run slow for large datasets and needs to be optimized (note that data to be filled in). 
+
+One idea we have that we think will drastically cut down the complexity of our algorithm depends on information from the full enrollment data. There are courses offered by the same department that will likely not have any overlapping interest by students. An example of this might be a 100-level (intro) course and a 300-level course along the same subject track. There is likely no reason for a student to be taking an intro course at the same time as an upper-level course in the same subject. An analysis of enrollment data should help us elucidate whether there are cases of students taking multiple courses of differing levels in the same department and if so what those cases are an how many of them occur. After that analysis, we should be able to initially union courses that would likely never have concurrent interest from any one student. This will cut down on the $O(n^2)$ components of our algorithm because we won't need to look at every single pair.
+
+Another similar circumstance to analyze is whether or not certain departments have very little upper-level overlap. If somebody takes a 300-level computer science class, they may not be likely to take a 300-level history class. By identifying these trends in the data, we can hopefully find other likely candidates for co-scheduling. Similarly, this will cut down on needing to enumerate every pairwise course conflicts and improve the performance of the algorithm.
+
+We also noticed that since student enrollment is not necessarily a weighted preference, we should weight each class overlap as 1 regardless of where they appear in a student's preference list. 
 
 \end{document}
 
