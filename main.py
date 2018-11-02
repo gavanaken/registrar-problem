@@ -73,17 +73,45 @@ def setCost(M, preferences):
     return M
 
 def createSets(M,numClasses,numRooms,numTimes):
-    S = UnionFind([i+1 for i in range(numClasses)],numRooms)
-    P = MinBinHeap(key=lambda x: x[2])
-    for i in range(0,numClasses-1):
-        for j in range(i+1,numClasses):
-            P.push((i+1,j+1,M[i,j]))
-    while S.numSets > numTimes:
-        i, j, conflictScore = P.pop()
-        print(i,j,conflictScore)
-        S.union(i,j)
+    timeGroups = UnionFind([i+1 for i in range(numClasses)],numRooms)
+    groupConflicts = MinBinHeap(key=lambda x: x[2])
+    nextID = numClasses+1
+    
+    groupReps = [0]*(numClasses*2)
+    for i in range(1,numClasses+1):
+        groupReps[i] = i
+    groupIDs = [0]*(numClasses+1)
+    for i in range(1,numClasses+1):
+        groupIDs[i] = i
+    
+    for ID1 in range(0,numClasses-1):
+        for ID2 in range(ID1+1,numClasses):
+            groupConflicts.push((ID1+1,ID2+1,M[ID1,ID2]))
+    
+    while timeGroups.numSets > numTimes:
+        ID1, ID2, conflictScore = groupConflicts.pop()
+        rep1, rep2 = groupReps[ID1], groupReps[ID2]
+        if rep1 is None or rep2 is None:
+            pass
+        elif timeGroups.find(rep1) == timeGroups.find(rep2):
+            pass
+        else:
+            timeGroups.union(rep1,rep2)            
+            # this is the adding together rows and columns thingy
+            for i in range(numClasses):
+                M[min(rep1-1,i)][max(rep1-1,i)] += M[min(rep2-1,i)][max(rep2-1,i)]
+                otherGroupID = groupIDs[timeGroups.find(i+1)]
+                groupConflicts.push((nextID, otherGroupID, M[min(rep1-1,i)][max(rep1-1,i)]))
 
-    return S.groups()
+            groupReps[nextID] = rep1
+            groupReps[ID1] = None
+            groupReps[ID2] = None
+
+            groupIDs[rep1] = nextID
+            groupIDs[rep2] = nextID
+            nextID += 1
+
+    return timeGroups.groups()
 
 def main():
     constraints, preferences = parse_args()
