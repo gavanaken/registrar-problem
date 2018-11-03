@@ -28,9 +28,18 @@ Call the number of classes as $n$. Initialize a "conflict matrix" $M$, an $n \ti
 
 Create a priority queue $P$ with a min heap to keep track of the pair of sets with lowest conflict score, and add each cell not along the diagonal to $P$. Sets are identified with unique group ID numbers, and as new sets are created by merging, they are given incrementally larger group ID numbers. While the number of sets in $S$ is greater than the number of class times, classes still haven't been grouped into sufficiently few time slots, so merging must continue. \\
 
- At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $P$. It is a common occurrence that oe or both sets specified by $s_i$ and $s_j$ no longer "exist" - that is, the sets they represent have already been merged with some other set, in which case the pair is disregarded. Otherwise, an attempt is made to merge the sets. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged, otherwise that pair is also simply disregarded. When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row and column $j$ are added to row and column $i$, and $i$ is designated as the repsentative row/column of group $s_k$. Row/column $j$ continue to exist to avoid matrix resizing, but they are never again looked at. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
+ At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $P$. It is a common occurrence that one or both sets specified by $s_i$ and $s_j$ no longer "exist" - that is, the sets they represent have already been merged with some other set, in which case the pair is disregarded. Otherwise, an attempt is made to merge the sets. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged, otherwise that pair is also simply disregarded. When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row and column $j$ are added to row and column $i$, and $i$ is designated as the representative row/column of group $s_k$. Row/column $j$ continue to exist to avoid matrix resizing, but they are never again looked at. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
 
 Each iteration reduces the number of sets in $S$ by one. Once the number of sets in $S$ is equal the number of time slots, each class set can be arbitrarily assigned to a time slot.
+
+Finally, we initialize a dictionary, S, whose keys are course numbers and values are dictionaries containing room, time, teacher, and student list for each course. We fill out this dictionary from the constraints such that:
+\begin{enumerate}
+    \item Each class group has a time, so every class in that group gets that time slot.
+    \item The larger classes in a given class group get the larger rooms (this requires some sorting).
+    \item The number of students in a class does not exceed the capacity of the assigned room (a simple check at the end of schedule creation).
+\end{enumerate}
+
+Teacher conflicts cannot arise in schedule creation because the handling of teacher conflicts is baked into the groups created from the conflict matrix. In this way, we create a valid schedule from our class groups.
 
 \subsection{Pseudocode}
 \begin{algorithm}
@@ -98,7 +107,7 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
          Initialize a disjoint set of size one containing that class, stored in $S$ \\
     }
     Initialize a priority queue $P$ with all values from M in it \\
-    \Whilenumber of sets in $S$ $\geq$ the number of time slots}{
+    \While{number of sets in $S$ $\geq$ the number of time slots}{
         Pop $(S_i, S_j)$ \\
         \If {either $S_i$ or $S_j$ has already been merged} {pass}
         \ElseIf{$|S_i|+|S_j| \leq$ the number of classrooms}{
@@ -118,6 +127,43 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
 }
 \end{algorithm}
 
+\begin{algorithm}
+\SetKwFunction{createSchedule}{createSchedule}
+\SetKwProg{Fn}{Function}{}{}
+\Fn{\createSchedule{}}{
+    initialize an empty dictionary, S \\
+    roomSorted = sorted rooms by room size \\
+    \For{each course}{
+        S[course] = a dictionary containing 4 key-value pairs for room, teacher, time, and student list \\
+    }
+    \For{each course}{
+        S[course][teacher] = teacher of that course, as given by constraints \\
+    }
+    \For{each preference list P}{
+        \For{each course in P}{
+            S[course][student list] = append the student whose preference list we are examining \\
+        }
+    }
+    \# This next variable is used to compute groupSorted below \\
+    classSorted = sorted courses by how many students want to take them \\
+    \For{group,i in enumerate(classGroups)}{
+        groupSorted = sort courses in group by how many students want to take them \\
+        \For{each course,j in enumerate(groupSorted}{
+            S[course][time] = i \\
+            S[course][room] = $j^{th}$ element of roomSorted \\
+        }
+    }
+    create a dictionary, R, from room constraint, where rooms are keys and room sizes are values \\
+    \For{each course}{
+        check that the size of it's students list is not greater than the room size of the room to which it's assigned \\
+        If there are too many students, remove as many as needed until they fit into the given room size \\
+    return S \\
+    }
+    }
+\end{algorithm}
+
+\# We have omitted the function that writes the output file, as it is merely an implementation detail once the schedule object has been created by \textit{createSchedule}. \\
+
 \subsection{Time Analysis}
 
 Call the number of teachers $t$, the number of students $s$, and the number of classes $n$. \\
@@ -128,7 +174,11 @@ Call the number of teachers $t$, the number of students $s$, and the number of c
 
  createSets is a more complex function. The way it is written, initialization of the Union-Find, which contains one set per class, is $O(n)$. Initializing the priority queue is constant, but pushing all $O(n^2)$ values of $M$ to it is $O(n^2$log$(n^2)) = O(n^2$log$n)$. All sets must be merged by the time the priority queue is empty, so the maximum number of iterations of the \textbf{while} is no more than the maximum number of entries ever created in the priority queue $P$. Since every group merge reduces the number of class groups by 1, at most $n-1$ merges may take place, so at most $2n-1$ groups can ever be created before all classes are in one group. Each conflict score is between two groups, so the total number of possible conflicts to store in $P$ is $O((2n-1)^2) = O(n^2)$. The time of popping from $P$ is $O($log$(n^2)) = O($log$n)$. Checking whether a group has already been merged, checking the group sizes of $S_i$ and $S_j$, and merging sets are all constant time with our data structures. Adding rows and pushing them to $P$ can occur in total as many times as there are possible conflict scores, again $O(n^2)$, so it does not actually increase the time complexity of the \textbf{while}. Overall the most complex operations that occurs for every loop are the pop and push to $P$, which are $O($log$n)$, so the total complexity of the \textbf{while} is $O(n^2$log$n)$. Lastly, the double \textbf{for} iterates over all classes, performing a constant time operation of assignment, so its complexity is $O(n)$. The dominating complexity of createSets is $O(n^2$log$n)$. \\
 
- Each function is performed once during the algorithm's run, so the time complexity is their sum $O(t+s+n^2$log$n)$. Assuming that the number of classes taught by each teacher closely hews to an average, the number of teachers is linear relative to the number of classes - under this assumption, the algorithm is $O(s + n^2$log$n)$. \\
+ Each function is performed once during the algorithm's run, so the time complexity is their sum $O(t+s+n^2$log$n)$. Assuming that the number of classes taught by each teacher closely hews to an average, the number of teachers is linear relative to the number of classes - under this assumption, the algorithm thus far is $O(s + n^2$log$n)$.
+ 
+ Finally, we have createSchedule. The initialization of S is O(1). Sorting the list of rooms is O(log(r)), where r is the number of rooms. The dictionary is implemented as a hash table, which will be unfortunate for this section of analysis, as – technically – worst case, insertion and search are O(k), where k is input size. Hence, it is worth noting that the dictionary was selected for its amazing O(1) \textit{average-case} complexity. Additionally, we note that the 'inner' dictionary contains only four key-value pairs, so insertion and search are constant. Continuing the analysis, the first for loop runs $n$ times and makes an insertion in each iteration, however, for \textbf{this} for loop, assignments are unlikely to generate hashing conflicts (as we are filling out the dictionary), so we do not consider them to be O(n), but rather, O(1). Thus, the first for loop is O(n). The second for loop runs $n$ times and makes an insertion at each iteration, so it is O($n^2$). The third and fourth for loops are nested, but the fourth for loop only runs the size of the student preference lists, which is constant. The third for loop runs $s$ times, and an insertion is made during each iteration. Thus, the third and fourth for loops run in O($sn$) time. The fifth and sixth for loops are nested, but the fifth iterates over a constant number of class times, so we only consider the sixth for loop for time complexity analysis. It runs $n$ times, making two insertions, so it runs in O($n^2$) time. The seventh for loop iterates over all courses, running $n$ times, doing a lookup at each iteration and removing at most $n-1$ students if there are too many students for a given room size. So the seventh for loop runs in O($n*(n+n-1)$) $\in$ O($n^2$) time. Since we don't know whether $s$ is bigger than $n$, we cannot be sure which term dominates, and thus, createSets runs in O($sn+n^2$) time. \\
+ 
+ Hence, the algorithm runs in $O(sn + n^2$log$n)$. \\
 
 \subsection{Discussion}
 
@@ -157,6 +207,8 @@ This algorithm is {\bf greedy} because each time work is done, it generally foll
 \subsection{Implementation}
 We chose to implement this algorithm in Python. Much of the implementation followed directly from our design and pseudocode. We were able to utilize the {\it unionfind} package hosted on {\it https://pypi.org} (licensed to The Python Software Foundation). We needed to modify the implementation slightly to allow for sets to contain more information (class IDs). We also implemented our own min heap to serve as the priority queue. There was one key addition to the algorithm we noticed when attempting to implement. When a set is popped from the priority queue, it's possible that it has already been {\it unioned} with a previously popped set (which would have then been pushed back onto the queue). Thus, we keep track of what has been {\it unioned} and if we pop a set that has been {\it unioned} already, we throw it away and continue with the next set on the queue. This change has been added to our description and pseudocode.
 
+We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. \\
+
 \subsection{Experimental Analysis (WIP)}
 After an initial implementation, we have determined that the algorithm works for the set of basic data. However, in porting this algorithm to real data, we have determined that there are a few extra elements to consider. Most notably, we have concluded that our current algorithm will run slow for large datasets and needs to be optimized (note that data to be filled in). 
 
@@ -167,5 +219,3 @@ Another similar circumstance to analyze is whether or not certain departments ha
 We also noticed that since student enrollment is not necessarily a weighted preference, we should weight each class overlap as 1 regardless of where they appear in a student's preference list. 
 
 \end{document}
-
-
