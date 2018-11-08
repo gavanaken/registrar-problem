@@ -7,8 +7,8 @@ experiment = 0
 
 class Constraints:
     def __init__(self, constraints_raw):
-        self.numTimes = int(constraints_raw[0][-1])
-        self.numRooms = int(constraints_raw[1][-1])
+        self.numTimes = int(constraints_raw[0].split('\t')[-1])
+        self.numRooms = int(constraints_raw[1].split('\t')[-1])
         self.rooms = []
         self.teachers = []
         cur = 2
@@ -91,6 +91,7 @@ def createSets(M,numClasses,numRooms,numTimes):
             groupConflicts.push((ID1+1,ID2+1,M[ID1,ID2]))
     
     while timeGroups.numSets > numTimes:
+        #print (timeGroups.numSets, numTimes)
         ID1, ID2, conflictScore = groupConflicts.pop()
         rep1, rep2 = groupReps[ID1], groupReps[ID2]
         if rep1 is None or rep2 is None:
