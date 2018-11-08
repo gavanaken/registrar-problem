@@ -1,8 +1,9 @@
-import sys, re, math
+import sys, re, math, time
 import numpy as np
 from data_structures import UnionFind, MinBinHeap, LinkedList
 constraintsFile = None
 preferencesFile = None
+experiment = 0
 
 class Constraints:
     def __init__(self, constraints_raw):
@@ -44,9 +45,10 @@ def parse_args():
     # from sys.argv
     constraintsFile = sys.argv[1] 
     preferencesFile = sys.argv[2]
+    experiment = sys.argv[3]
     constraints_raw = open(constraintsFile, 'r').read().split('\n')
     preferences_raw = open(preferencesFile, 'r').read().split('\n')
-    return Constraints(constraints_raw), Preferences(preferences_raw)
+    return Constraints(constraints_raw), Preferences(preferences_raw), experiment
 
 def setTeach(M, teachers):
     teachers.sort(key=lambda tup: tup[1]) # sort by the teacher
@@ -179,8 +181,8 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
             schedule[course]['students'] = schedule[course]['students'][0:roomDict[schedule[course]['room']]]
     return schedule
 
-def formatSchedule(schedule, n):
-    f = open('schedule_output.txt', 'w+')
+def formatSchedule(schedule, n, experiment):
+    f = open('schedule_{0}.txt'.format(experiment), 'w+')
     
     f.write('Course\tRoom\tTeacher\tTime\tStudents\n')
     for course in range(1, n+1):
@@ -189,7 +191,8 @@ def formatSchedule(schedule, n):
     f.close()
 
 def main():
-    constraints, preferences = parse_args()
+    start = time.time()
+    constraints, preferences, experiment = parse_args()
     teachers = constraints.teachers
     n = int(constraints.numClass)
     M = np.zeros((n,n))
@@ -197,7 +200,8 @@ def main():
     M = setCost(M, preferences.prefLists)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)
-    formatSchedule(schedule, n)
+    formatSchedule(schedule, n, experiment)
+    print("--- %s seconds ---" % (time.time() - start))
 
 # note that everything is 1-indexed, but we are keeping the matrix zero-indexed, so decrement when u store and increment when you restore
 
