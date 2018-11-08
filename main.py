@@ -113,7 +113,7 @@ def createSets(M,numClasses,numRooms,numTimes):
 
     return timeGroups.groups()
 
-def createSchedule(teachers, classGroups, prefMaster, roomList, n):
+def createSchedulePrev(teachers, classGroups, prefMaster, roomList, n):
     #create empty schedule
     schedule = {}
     for course in range(1, n+1):
@@ -135,6 +135,40 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
         for idx3,course in enumerate(sorted_group):
             schedule[course]['time'] = idx2
             schedule[course]['room'] = sorted_rooms[idx3][0]
+    #make sure there are not more students in the class than the room it is assigned to can fit
+    roomDict = dict(roomList)
+    for course in range(1, n+1):
+        if(len(schedule[course]['students']) > roomDict[schedule[course]['room']]):
+            #remove the students that don't fit from the end of the 'students' list for this course
+            #NOTE: This repetitively shortchanges higher-numbered students, because we remove students we can't handle from the END of the list.
+            schedule[course]['students'] = schedule[course]['students'][0:roomDict[schedule[course]['room']]]
+    return schedule
+
+
+def createSchedule(teachers, classGroups, prefMaster, roomList, n):
+    #create empty schedule
+    schedule = {}
+    for course in range(1, n+1):
+        schedule[course] = {'room':0, 'teacher':0, 'time':0, 'students':[]}
+    #assign teachers to courses
+    for (course, prof) in teachers:
+        schedule[course]['teacher'] = prof
+    #assign times so that grouped courses are at the same time
+    for idx2,group in enumerate(classGroups, 1):
+        for course in group:
+            schedule[course]['time'] = idx2
+    #fill out students for each course, assuming all can fit
+    for idx,preflist in enumerate(prefMaster, 1):
+        times = []
+        for course in preflist:
+            if schedule[course]['time'] not in times:
+                times.append(schedule[course]['time'])
+                schedule[course]['students'].append(idx)
+    #assign times and rooms to courses (bigger classes get bigger rooms)
+    for group in classGroups:
+        sorted_group = sorted(group, key=lambda c: len(schedule[c]['students']), reverse=True)
+        for idx3,course in enumerate(sorted_group):
+                schedule[course]['room'] = sorted_rooms[idx3][0]
     #make sure there are not more students in the class than the room it is assigned to can fit
     roomDict = dict(roomList)
     for course in range(1, n+1):
