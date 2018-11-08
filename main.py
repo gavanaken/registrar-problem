@@ -165,6 +165,7 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
                 times.append(schedule[course]['time'])
                 schedule[course]['students'].append(idx)
     #assign times and rooms to courses (bigger classes get bigger rooms)
+    sorted_rooms = sorted(roomList, key=lambda kv: kv[1], reverse=True)
     for group in classGroups:
         sorted_group = sorted(group, key=lambda c: len(schedule[c]['students']), reverse=True)
         for idx3,course in enumerate(sorted_group):
