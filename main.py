@@ -92,7 +92,11 @@ def createSets(M,numClasses,numRooms,numTimes):
     
     while timeGroups.numSets > numTimes:
         #print (timeGroups.numSets, numTimes)
-        ID1, ID2, conflictScore = groupConflicts.pop()
+        try:
+            ID1, ID2, conflictScore = groupConflicts.pop()
+        except AttributeError as e:
+            print(timeGroups.groups())
+            raise e
         rep1, rep2 = groupReps[ID1], groupReps[ID2]
         if rep1 is None or rep2 is None:
             pass
