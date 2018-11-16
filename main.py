@@ -8,19 +8,32 @@ experiment = 0
 class Constraints:
     def __init__(self, constraints_raw):
         self.numTimes = int(constraints_raw[0].split('\t')[-1])
-        self.numRooms = int(constraints_raw[1].split('\t')[-1])
+        cur = 1
+        while not constraints_raw[cur].startswith('Room'):
+            cur += 1
+        self.numRooms = int(constraints_raw[cur].split('\t')[-1])
+        cur += 1
         self.rooms = []
         self.teachers = []
-        cur = 2
-        while re.match("[0-9]+", constraints_raw[cur]):
-            self.rooms.append((int(constraints_raw[cur].split('\t')[0]),int(constraints_raw[cur].split('\t')[1])))
-            cur += 1
+        if not re.match("[0-9]+", constraints_raw[cur]): # we dont have nums
+            while not constraints_raw[cur].startswith('Classes'):
+                self.rooms.append((constraints_raw[cur].split('\t')[0],int(constraints_raw[cur].split('\t')[1])))
+                cur += 1
+        else:
+            while re.match("[0-9]+", constraints_raw[cur]):
+                self.rooms.append((int(constraints_raw[cur].split('\t')[0]),int(constraints_raw[cur].split('\t')[1])))
+                cur += 1
         self.numClass = int(constraints_raw[cur].split('\t')[-1])
         cur += 1
         self.numTeach = int(constraints_raw[cur].split('\t')[-1])
         cur += 1
+        randTeach = self.numTeach + 1
         while re.search("[0-9]+", constraints_raw[cur]):
-            self.teachers.append((int(constraints_raw[cur].split('\t')[0]),int(constraints_raw[cur].split('\t')[1])))
+            t = constraints_raw[cur].split('\t')[1]
+            if t == '':
+                t = randTeach
+                randTeach += 1
+            self.teachers.append((int(constraints_raw[cur].split('\t')[0]),int(t)))
             cur += 1
 
     def __str__(self):
@@ -32,10 +45,13 @@ class Preferences:
         self.numStudents = int(preferences_raw[0].split('\t')[-1])
         self.prefLists = []
         cur = 1
+        thePrefs = []
         while re.match("[0-9]+", preferences_raw[cur]):
-            prefs = re.sub('.*\t','',preferences_raw[cur]).split(' ')
-            self.prefLists.append([int(pref) for pref in prefs]) # I hate this way of doing it but whatever
+            stud = int(preferences_raw[cur].split('\t')[0])
+            prefs = re.sub('.*\t','',preferences_raw[cur]).rstrip().split(' ')
+            thePrefs.append((stud, [int(pref) for pref in prefs])) # I hate this way of doing it but whatever
             cur += 1
+        self.prefLists = thePrefs
     def __str__(self):
         return str(self.prefLists)
     
@@ -52,7 +68,6 @@ def parse_args():
 
 def setTeach(M, teachers):
     teachers.sort(key=lambda tup: tup[1]) # sort by the teacher
-    #print(teachers)
     last = teachers[0]
     i = 1
     while i < len(teachers):
@@ -66,17 +81,17 @@ def setTeach(M, teachers):
     return M
 
 def setCost(M, preferences):
-    for student in preferences:
-        for i in range(0,4):
-            for j in range(i+1,4):
+    for studentTup in preferences:
+        student = studentTup[1]
+        n = len(student)
+        for i in range(0,n):
+            for j in range(i+1,n):
                 c1 = min(student[i], student[j])
                 c2 = max(student[i], student[j])
-                M[c1-1,c2-1]+=(4-i)+(4-j)
-    #print(M)
+                M[c1-1,c2-1]+=(n-i)+(n-j)
     return M
 
 def createSets(M,numClasses,numRooms,numTimes):
-    #print(M)
     heapSize = 0
     timeGroups = UnionFind([i+1 for i in range(numClasses)],numRooms)
     groupConflicts = MinBinHeap(key=lambda x: x[2])
@@ -91,73 +106,48 @@ def createSets(M,numClasses,numRooms,numTimes):
     
     for ID1 in range(0,numClasses-1):
         for ID2 in range(ID1+1,numClasses):
-            #print((ID1+1,ID2+1,M[ID1,ID2]))
-            heapSize += 1
             groupConflicts.push((ID1+1,ID2+1,M[ID1,ID2]))
     
     while timeGroups.numSets > numTimes:
-
+        startNum = timeGroups.numSets
         try:
             ID1, ID2, conflictScore = groupConflicts.pop()
             heapSize -= 1
         except AttributeError as e:
             print (timeGroups.groups())
+            print ()
             raise e
         rep1, rep2 = groupReps[ID1], groupReps[ID2]
         if rep1 is None or rep2 is None:
             pass
         elif timeGroups.find(rep1) == timeGroups.find(rep2):
             pass
-            '''
-        else:
-            #print(timeGroups.groups())
-            rep1, rep2 = timeGroups.find(rep1), timeGroups.find(rep2) # just in case
-            #if rep1 in [2,12] and rep2 in [2,12]:
-                #print(M)
-            #print(conflictScore)
-            timeGroups.union(rep2, rep1)
-            for i in range(numClasses):
-                M[min(rep1-1,i)][max(rep1-1,i)] += M[min(rep2-1,i)][max(rep2-1,i)]
-            for set in timeGroups.groups():
-                thisrep = timeGroups.find(list(set)[0])
-                if not timeGroups.issame(rep1, thisrep):
-                    confl = M[min(rep1-1,thisrep-1)][max(rep1-1,thisrep-1)]
-                    otherGroupID = groupIDs[thisrep]
-                    groupConflicts.push((nextID, otherGroupID, confl))
-
-            groupReps[nextID] = rep1
-            groupReps[ID1] = None
-            groupReps[ID2] = None
-
-            groupIDs[rep1] = nextID
-            groupIDs[rep2] = nextID
-            nextID += 1
-            '''
         else:
             #print(timeGroups.find(13), timeGroups.find(19))
             timeGroups.union(rep2,rep1)
+            if timeGroups.numSets != startNum:
             # this is the adding together rows and columns thingy
-            groups = [nextID]
-            for i in range(numClasses):
-                M[min(rep1-1,timeGroups.find(i+1)-1)][max(rep1-1,timeGroups.find(i+1)-1)] += M[min(rep2-1,timeGroups.find(i+1)-1)][max(rep2-1,timeGroups.find(i+1)-1)]
-                #M[min(rep1-1,i)][max(rep1-1,i)] += M[min(rep2-1,i)][max(rep2-1,i)]
-            #print(M)
-            for i in range(numClasses):
-                otherGroupID = groupIDs[timeGroups.find(i+1)]
-                if otherGroupID not in groups:
-                    confl = M[min(rep1-1,timeGroups.find(i+1)-1)][max(rep1-1,timeGroups.find(i+1)-1)]
-                    toPush = (nextID, otherGroupID, confl)
-                    groupConflicts.push((nextID, otherGroupID, confl))
-                    heapSize += 1
-                    groups.append(otherGroupID)
+                groups = [nextID]
+                for i in range(numClasses):
+                    M[min(rep1-1,timeGroups.find(i+1)-1)][max(rep1-1,timeGroups.find(i+1)-1)] += M[min(rep2-1,timeGroups.find(i+1)-1)][max(rep2-1,timeGroups.find(i+1)-1)]
+                    #M[min(rep1-1,i)][max(rep1-1,i)] += M[min(rep2-1,i)][max(rep2-1,i)]
+                for i in range(numClasses):
+                    otherGroupID = groupIDs[timeGroups.find(i+1)]
+                    if otherGroupID not in groups:
+                        confl = M[min(rep1-1,timeGroups.find(i+1)-1)][max(rep1-1,timeGroups.find(i+1)-1)]
+                        #confl = M[min(rep1-1,i)][max(rep1-1,i)]
+                        toPush = (nextID, otherGroupID, confl)
+                        groupConflicts.push((nextID, otherGroupID, confl))
+                        heapSize += 1
+                        groups.append(otherGroupID)
 
-            groupReps[nextID] = rep1
-            groupReps[ID1] = None
-            groupReps[ID2] = None
+                groupReps[nextID] = rep1
+                groupReps[ID1] = None
+                groupReps[ID2] = None
 
-            groupIDs[rep1] = nextID
-            groupIDs[rep2] = nextID
-            nextID += 1
+                groupIDs[rep1] = nextID
+                groupIDs[rep2] = nextID
+                nextID += 1
             
     print(timeGroups.groups())
     return timeGroups.groups()
@@ -224,7 +214,7 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
     #create empty schedule
     #print(classGroups)
     schedule = {}
-    for course in range(1, n+1):
+    for (course, prof) in teachers:
         schedule[course] = {'room':0, 'teacher':0, 'time':0, 'students':[]}
     #assign teachers to courses
     for (course, prof) in teachers:
@@ -234,9 +224,11 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
         for course in group:
             schedule[course]['time'] = idx2
     #fill out students for each course, assuming all can fit
-    for idx,preflist in enumerate(prefMaster, 1):
+    for preflist in prefMaster:
+        idx = preflist[0]
+        prefs = preflist[1]
         times = []
-        for course in preflist:
+        for course in prefs:
             if schedule[course]['time'] not in times:
                 times.append(schedule[course]['time'])
                 schedule[course]['students'].append(idx)
@@ -271,7 +263,6 @@ def main():
     n = int(constraints.numClass)
     M = np.zeros((n,n))
     M = setTeach(M, teachers)
-    #print(M)
     M = setCost(M, preferences.prefLists)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)

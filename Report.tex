@@ -214,8 +214,27 @@ After an initial implementation, we have determined that the algorithm works for
 
 One idea we have that we think will drastically cut down the complexity of our algorithm depends on information from the full enrollment data. There are courses offered by the same department that will likely not have any overlapping interest by students. An example of this might be a 100-level (intro) course and a 300-level course along the same subject track. There is likely no reason for a student to be taking an intro course at the same time as an upper-level course in the same subject. An analysis of enrollment data should help us elucidate whether there are cases of students taking multiple courses of differing levels in the same department and if so what those cases are an how many of them occur. After that analysis, we should be able to initially union courses that would likely never have concurrent interest from any one student. This will cut down on the $O(n^2)$ components of our algorithm because we won't need to look at every single pair.
 
+After analyzing the Haverford Data further, we found that in 2014, there were 44 cases of a student concurrently enrolling in a 100-level and 300-level course in the same subject. We also found that these 44 cases were confined to only 13 departments. In many cases, there were a few (1-3) instances for a given department, but some (Political Science, Music, and Psychology) had a higher number of occurences (5-9), as shown in Table ******.
+
 Another similar circumstance to analyze is whether or not certain departments have very little upper-level overlap. If somebody takes a 300-level computer science class, they may not be likely to take a 300-level history class. By identifying these trends in the data, we can hopefully find other likely candidates for co-scheduling. Similarly, this will cut down on needing to enumerate every pairwise course conflicts and improve the performance of the algorithm.
 
 We also noticed that since student enrollment is not necessarily a weighted preference, we should weight each class overlap as 1 regardless of where they appear in a student's preference list. 
+
+\begin{table}[]
+\centering
+\begin{tabular}{llll}
+Subject & Occurrences & Subject & Occurrences \\
+CITY    & 1           & RELG    & 3           \\
+SOCL    & 1           & ARTS    & 3           \\
+SPAN    & 1           & ANTH    & 3           \\
+ICPR    & 1           & MUSC    & 5           \\
+HIST    & 1           & POLS    & 9           \\
+PHIL    & 1           & PSYC    & 11          \\
+LING    & 2           &         &             \\        
+\end{tabular}
+\caption{Occurrences per subject of concurrent enrollment in a 100- and 300-level course in one subject}
+\label{my-label}
+\end{table}
+
 
 \end{document}
