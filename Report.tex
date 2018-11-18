@@ -164,6 +164,7 @@ $M$[$c1$][$c2$] += ((4-i) + (4-j))
 
 \# We have omitted the function that writes the output file, as it is merely an implementation detail once the schedule object has been created by \textit{createSchedule}. \\
 
+\newpage
 \subsection{Time Analysis}
 
 Call the number of teachers $t$, the number of students $s$, and the number of classes $n$. \\
@@ -210,7 +211,32 @@ We chose to implement this algorithm in Python. Much of the implementation follo
 We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. \\
 
 \subsection{Experimental Analysis (WIP)}
-After an initial implementation, we have determined that the algorithm works for the set of basic data. However, in porting this algorithm to real data, we have determined that there are a few extra elements to consider. Most notably, we have concluded that our current algorithm will run slow for large datasets and needs to be optimized (note that data to be filled in). 
+The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table *********. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with greater than 80\% of students ultimately enrolled in their preferred classes. 
+
+We also tested the algorithm's performance on the data from Haverford (experiment number 5).
+
+\newpage
+\begin{table}[]
+\centering
+\begin{tabular}{lllllllll}
+no. & Classes & Students & Times & Rooms & Time (sec) & Best  & Experimental & \% Optimality \\
+1             & 20         & 100         & 5        & 5        & 0.013000011    & 400   & 332          & 0.83          \\
+2             & 100        & 2000        & 10       & 20       & 0.36500001     & 8000  & 7066         & 0.88325       \\
+3             & 100        & 1000        & 10       & 20       & 0.377999783    & 4000  & 3562         & 0.8905        \\
+4             & 500        & 10000       & 60       & 50       & 6.296999931    & 40000 & 39100        & 0.9775        \\
+5            & 365            & 1177            & 60       & 50      & 2.94600010         & 4427      & 3718             & 0.83985    \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &               \\
+              &            &             &          &          &                &       &              &              
+\end{tabular}
+\caption{Results of testing the algorithm with various input parameters}
+\label{my-label}
+\end{table}
 
 One idea we have that we think will drastically cut down the complexity of our algorithm depends on information from the full enrollment data. There are courses offered by the same department that will likely not have any overlapping interest by students. An example of this might be a 100-level (intro) course and a 300-level course along the same subject track. There is likely no reason for a student to be taking an intro course at the same time as an upper-level course in the same subject. An analysis of enrollment data should help us elucidate whether there are cases of students taking multiple courses of differing levels in the same department and if so what those cases are an how many of them occur. After that analysis, we should be able to initially union courses that would likely never have concurrent interest from any one student. This will cut down on the $O(n^2)$ components of our algorithm because we won't need to look at every single pair.
 
@@ -218,7 +244,7 @@ After analyzing the Haverford Data further, we found that in 2014, there were 44
 
 Another similar circumstance to analyze is whether or not certain departments have very little upper-level overlap. If somebody takes a 300-level computer science class, they may not be likely to take a 300-level history class. By identifying these trends in the data, we can hopefully find other likely candidates for co-scheduling. Similarly, this will cut down on needing to enumerate every pairwise course conflicts and improve the performance of the algorithm.
 
-We also noticed that since student enrollment is not necessarily a weighted preference, we should weight each class overlap as 1 regardless of where they appear in a student's preference list. 
+
 
 \begin{table}[]
 \centering
@@ -235,6 +261,29 @@ LING    & 2           &         &             \\
 \caption{Occurrences per subject of concurrent enrollment in a 100- and 300-level course in one subject}
 \label{my-label}
 \end{table}
+
+\subsection{Additional Constraints}
+
+\begin{enumerate}
+\item{\textbf{Weighted preferences}}
+
+When students select which classes they are going to take, they may have an idea of which ones are more important for them to get into. An obvious example of this could be courses for their major, minor, etc. Assuming a student has sorted preferences of $n$ classes (in descending order), computing initial costs between classes can be achieved according to the following formula:\\
+
+$cost(c_i,c_j) = (n-i)+(n-j)$ \\
+
+This way, courses which appear earlier in the list (higher preference) effectively conflict more than courses which appear later in the list (lower preference). Our algorithm takes this convention into account when it sets costs. In the case of the Haverford data, we have extended the constraints with student major and minor preferences. When preferences are read off of the student preferences file, they are sorted such that courses in a student's major appear before courses in a student's minor, which appear before all other courses. Total preference value must also be weighted such that a student beging enrolled in their top choice contributes more to the total preference value than a student being enrolled in their bottom choice. Evaluating preference value under this constraint can be achieved by using the {\it is\_valid\_weighted.pl} script. 
+
+***** NOTE THESE CHANGES HAVE NOT BEEN MADE YET TO THE CODE *******
+
+\item{Labs / connected courses}
+
+\item{Courses taking more than one time slot}
+
+\item{}
+
+\item{}
+
+\end{enumerate}
 
 
 \end{document}
