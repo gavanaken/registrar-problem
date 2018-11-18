@@ -149,7 +149,6 @@ def createSets(M,numClasses,numRooms,numTimes):
             #print(timeGroups.find(13), timeGroups.find(19))
             timeGroups.union(rep2,rep1)
             if timeGroups.numSets != startNum:
-                print(conflictScore)
             # this is the adding together rows and columns thingy
                 groups = [nextID]
                 for i in range(numClasses):
@@ -173,7 +172,7 @@ def createSets(M,numClasses,numRooms,numTimes):
                 groupIDs[rep2] = nextID
                 nextID += 1
             
-    print(timeGroups.groups())
+    #print(timeGroups.groups())
     return timeGroups.groups()
 
 def createSchedule(teachers, classGroups, prefMaster, roomList, n):
@@ -230,7 +229,7 @@ def main():
     start = time.time()
     constraints, preferences, experiment = parse_args()
     teachers = constraints.teachers
-    print(teachers)
+    #print(teachers)
     numTeach = constraints.numTeach
     CtoID = constraints.CoursetoID
     IDtoC = constraints.IDtoCourse
