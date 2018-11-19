@@ -265,16 +265,28 @@ LING    & 2           &         &             \\
 \subsection{Additional Constraints}
 
 \begin{enumerate}
-\item{\textbf{Weighted preferences}}
+\item{\textbf{Preferencing courses in a student's major/minor}}
 
-When students select which classes they are going to take, they may have an idea of which ones are more important for them to get into. An obvious example of this could be courses for their major, minor, etc. Assuming a student has sorted preferences of $n$ classes (in descending order), computing initial costs between classes can be achieved according to the following formula:\\
+When students select which classes they are going to take, it is often most important for them to take courses which count to their major and/or minor. The current student preferences file convention does not sort a given student's desired courses. However, with information on what courses fall into which subjects, as well as what each student's major/minor is, we can sort courses as: [major courses, minor courses, everything else] for each student. With a desire to take $n$ classes, sorted by preference (in descending order), computing initial costs between classes can be achieved according to the following formula:\\
 
-$cost(c_i,c_j) = (n-i)+(n-j)$ \\
+$cost(c_i,c_j) = (n-i)+(n-j)$ where i $<$ j are indices in a student's preference list \\
 
-This way, courses which appear earlier in the list (higher preference) effectively conflict more than courses which appear later in the list (lower preference). Our algorithm takes this convention into account when it sets costs. In the case of the Haverford data, we have extended the constraints with student major and minor preferences. When preferences are read off of the student preferences file, they are sorted such that courses in a student's major appear before courses in a student's minor, which appear before all other courses. Total preference value must also be weighted such that a student beging enrolled in their top choice contributes more to the total preference value than a student being enrolled in their bottom choice. Evaluating preference value under this constraint can be achieved by using the {\it is\_valid\_weighted.pl} script. 
+This way, courses which appear earlier in the list (higher preference major/minor) effectively conflict more than courses which appear later in the list (lower preference). Our algorithm takes this convention into account when it sets costs. When our program is run with the flag "--majors", it looks for a file constructed according to the convention below. The algorithm then re-sorts student preferences to organize them in descending priority. Then, conflicts are computed according to the above formula. Total maximum student preference value is also re-computed along this process because it will be a function of not just whether a student is enrolled in a course, but also of the $priority$ of the courses they are enrolled in. Once a schedule is generated, the student preference value is checked using our added script "is\_valid\_sorted.py". Note that "is\_valid.pl" must still be used to report schedule accuracy, but the value it gives for student preference does not take priorities into account.\\
 
-***** NOTE THESE CHANGES HAVE NOT BEEN MADE YET TO THE CODE *******
+The added constraints are passed through a file of the following format:\\
 
+majors\\
+1\qquad CHEM ARTS\\
+2\qquad CMSC \\
+...\\
+subjects\\
+CHEM\qquad 12 42\\
+ARTS\qquad  13 11\\
+...\\
+
+Where majors show space-separated major/minors for each student id and subjects show space-separated courses belonging to each subject name.
+
+As we have marked enrollment in a major/minor course as an important contribution to the overall optimality of a course-scheduling, adding this constraint improves overall optimality of the algorithm. The registrar should make efforts to avoid scheduling two courses from the same major at the same time. Furthermore, the registrar should evaluate what common major-minor pairs are and avoid scheduling courses from those two disciplines at the same time.
 \item{Labs / connected courses}
 
 \item{Courses taking more than one time slot}
