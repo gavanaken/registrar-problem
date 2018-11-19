@@ -56,6 +56,7 @@ class Preferences:
         self.maxPref = 0
         self.CtoID = CtoID
         self.IDtoC = IDtoC
+        self.weights = {} # to be used by weighted costs
         cur = 1
         thePrefs = []
         while re.match("[0-9]+", preferences_raw[cur]):
@@ -70,63 +71,28 @@ class Preferences:
     def __str__(self):
         return str(self.prefLists)
 
-def sortMajor(Prefs, majorKey, minorKey, subjKey):
-    preflist = Prefs.prefLists
-    CtoID = Prefs.CtoID
-    IDtoC = Prefs.IDtoC
-    newPrefs = []
-    newMax = 0
-    for stud, courses in preflist:
-        mjr = []
-        mnr = []
-        rest = []
-        major = majorKey[stud]
-        minor = minorKey[stud]
-        priority = 1
-        for c in courses:
-            newMax += priority
-            if IDtoC[c] in subjKey[major]:
-                mjr.append(c)
-            else:
-                if IDtoC[c] in subjKey[minor]:
-                    mnr.append(c)
-                else:
-                    rest.append(c)
-            priority += 1
-        newcourses = mjr + mnr + rest
-        newPrefs.append((stud, newcourses))
-    Prefs.prefLists = newPrefs
-    Prefs.maxPref = newMax
-    return Prefs
 
-def parseMajor(Cons, Prefs):
-    majorKey = {}
-    minorKey = {}
-    subjKey = {}
-    majors = open(sys.argv[4], 'r').read().split('\n')
-    cur = 1 # majors
-    while not re.search("subjects", majors[cur]):
-        # studentNum    "major" "minor"
-        stud = int(majors[cur].split('\t')[0])
-        majmin = majors[cur].split('\t')[1].split(' ')
-        maj = majmin[0]
-        if len(majmin) > 1: #we have a minor
-            min = majmin[1]
-        majorKey[stud] = maj
-        minorKey[stud] = min
-        cur += 1
-    cur += 1 # subjects
-    while majors[cur] != "":
-        subj = majors[cur].split('\t')[0]
-        courses = [int(c) for c in (majors[cur].split('\t')[1]).split(' ')]
-        subjKey[subj] = courses
-        cur += 1
-    sortedPref = sortMajor(Prefs, majorKey, minorKey, subjKey)
-    return Cons, sortedPref
+def parseWeights(Cons, Prefs, weightsFile):
+    # weights file is just:
+    # student   weight1 weight2 weight3
+    # corresponding to course1 course2 course3
+    weightlines = open(weightsFile, 'r').read().split('\n')
+    theWeights = {}
+    newMax = 0
+    for w in weightlines[1:]: # skip the header
+        if w != '': #make sure there aren't trailing newlines
+            stud = int(w.split('\t')[0])
+            weights = [int(wt) for wt in w.split('\t')[1].split(' ')]
+            theWeights[stud] = weights
+            newMax += 10 # each student gets 10 preference units to distribute
+    Prefs.weights = theWeights
+    Prefs.maxPref = newMax
+    return Cons, Prefs
 
 def parse_special(Cons, Prefs):
-    if sys.argv[3] == "--major":
-        return parseMajor(Cons, Prefs)
+    if "--weighted" in sys.argv:
+        weightsFile = sys.argv[sys.argv.index("--weighted")+1] # next argument
+        return parseWeights(Cons, Prefs, weightsFile)
     
 def parse_args():
     # find the constraints file
@@ -139,12 +105,10 @@ def parse_args():
     Cons = Constraints(constraints_raw)
     CtoID = Cons.CoursetoID
     IDtoC = Cons.IDtoCourse
-    flag = ""
     Prefs = Preferences(preferences_raw, CtoID, IDtoC)
     if len(sys.argv) > 3: # we have special constraints to add
-        flag = sys.argv[3]
         Cons, Prefs = parse_special(Cons, Prefs)
-    return flag, Cons, Prefs
+    return Cons, Prefs
 
 def setTeach(M, teachers):
     teachers.sort(key=lambda tup: tup[1]) # sort by the teacher
@@ -180,8 +144,9 @@ def setCost(M, preferences):
     return M
 
 
-def setCostSorted(M, preferences):
+def setCostSorted(M, preferences, weights):
     for studentTup in preferences:
+        stud = studentTup[0]
         prefs = studentTup[1]
         n = len(prefs)
         for i in range(0,n):
@@ -190,7 +155,7 @@ def setCostSorted(M, preferences):
                 id2 = prefs[j]
                 c1 = min(id1, id2)
                 c2 = max(id1, id2)
-                M[id1-1,id2-1]+=(n-i)+(n-j)
+                M[id1-1,id2-1]+=weights[stud][i] + weights[stud][j]
     return M
 
 def createSets(M,numClasses,numRooms,numTimes):
@@ -306,7 +271,7 @@ def formatSchedule(schedule, n, IDtoC, numTeach):
 
 def main():
     start = time.time()
-    flag, constraints, preferences= parse_args()
+    constraints, preferences= parse_args()
     teachers = constraints.teachers
     numTeach = constraints.numTeach
     CtoID = constraints.CoursetoID
@@ -314,8 +279,8 @@ def main():
     n = int(constraints.numClass)
     M = np.zeros((n,n))
     M = setTeach(M, teachers)
-    if flag == "--major" or flag == "--dist":
-        M = setCostSorted(M, preferences.prefLists)
+    if "--weighted" in sys.argv:
+        M = setCostSorted(M, preferences.prefLists, preferences.weights)
     else:
         M = setCost(M, preferences.prefLists)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
