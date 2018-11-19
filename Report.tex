@@ -211,12 +211,12 @@ We chose to implement this algorithm in Python. Much of the implementation follo
 We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. \\
 
 \subsection{Experimental Analysis (WIP)}
-The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table *********. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with greater than 80\% of students ultimately enrolled in their preferred classes. 
+The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with greater than 80\% of students ultimately enrolled in their preferred classes. 
 
 We also tested the algorithm's performance on the data from Haverford (experiment number 5).
 
-\newpage
-\begin{table}[]
+
+\begin{table}[h]
 \centering
 \begin{tabular}{lllllllll}
 no. & Classes & Students & Times & Rooms & Time (sec) & Best  & Experimental & \% Optimality \\
@@ -230,23 +230,53 @@ no. & Classes & Students & Times & Rooms & Time (sec) & Best  & Experimental & \
               &            &             &          &          &                &       &              &               \\
               &            &             &          &          &                &       &              &               \\
               &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &              
 \end{tabular}
 \caption{Results of testing the algorithm with various input parameters}
 \label{my-label}
 \end{table}
 
-One idea we have that we think will drastically cut down the complexity of our algorithm depends on information from the full enrollment data. There are courses offered by the same department that will likely not have any overlapping interest by students. An example of this might be a 100-level (intro) course and a 300-level course along the same subject track. There is likely no reason for a student to be taking an intro course at the same time as an upper-level course in the same subject. An analysis of enrollment data should help us elucidate whether there are cases of students taking multiple courses of differing levels in the same department and if so what those cases are an how many of them occur. After that analysis, we should be able to initially union courses that would likely never have concurrent interest from any one student. This will cut down on the $O(n^2)$ components of our algorithm because we won't need to look at every single pair.
+\subsection{Additional Constraints}
 
-After analyzing the Haverford Data further, we found that in 2014, there were 44 cases of a student concurrently enrolling in a 100-level and 300-level course in the same subject. We also found that these 44 cases were confined to only 13 departments. In many cases, there were a few (1-3) instances for a given department, but some (Political Science, Music, and Psychology) had a higher number of occurences (5-9), as shown in Table ******.
+\begin{enumerate}
+\item{\textbf{Weighted Preferences}}
 
-Another similar circumstance to analyze is whether or not certain departments have very little upper-level overlap. If somebody takes a 300-level computer science class, they may not be likely to take a 300-level history class. By identifying these trends in the data, we can hopefully find other likely candidates for co-scheduling. Similarly, this will cut down on needing to enumerate every pairwise course conflicts and improve the performance of the algorithm.
+When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic persuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occuring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following forumla:\\
 
+$cost(c_i,c_j) = weight[c_i] + weight[c_j]$
 
+This way, courses with higher weights have a higher overlap cost than courses with lower weights. Our algorithm takes this convention into account when it sets costs. When our program is run with the flag "--weights", it looks for a file constructed according to the convention below. Then, conflicts are computed according to the above formula. Total maximum student preference value is also re-computed along this process because it will be a function of not just whether a student is enrolled in a course, but also of the $weight$ of the courses they are enrolled in. Since we have constrained the weight to 10, this is just $10\times \#students$. Once a schedule is generated, the student preference value is checked using our added script "pref\_value\_sorted.py". Note that "is\_valid.pl" must still be used to report schedule accuracy, but the value it gives for student preference does not take priorities into account.\\
 
-\begin{table}[]
+The added constraints are passed through a file of the following format:\\
+
+student\qquad weights \\
+1\qquad 5 3 1 1 \\
+2\qquad 4 2 2 1 1 \\
+3\qquad 3 3 2 2  \\
+
+Where weights are space-separated weights (totalling 10) for each student ordered the same as the student's list of classes in the preferences file
+
+Registering for two courses does not mean that one wants to enroll in them equally. Thus, it is important to consider which courses would be most problematic to overlap. For this reason, adopting this added constraint improves the overall optimality of the algorithm in computing high preference schedules. The take away from this design change is that when scheduling courses, the registrar should take into account the (implicit) preferences of students. For example, if there are a lot of students who are computer science majors / math minors, a number of students will highly prefer taking those courses concurrently and they shouldn't be scheduled together. Similarly, if a number of junior computer science majors have outstandind distribution requirements in the humanities, the registrar should ensure that not too many CS courses are scheduled on top of humanities courses.\\
+
+\item{\textbf{Conflict Assumptions}}\\
+In reality, the registrar does not have student preferences to work with. Therefore, it is impossible to use our algorithm to make scheduling decisions. We can, however, use our algorithm to check the accuracy of an implementable standard for course scheduling. In this case, we wanted to test the assumption that 100-level and 300-level courses in the same department/subject are rarely taken by the one student. To do this, we wrote a script "dept\_level\_data.py" which parses Haverford Enrollment Data to output the subject and level for each course and writes it to a file "DeptLevels.txt". This file can be supplied to our algorithm following the flag "--levels". With this added information, the algorithm sets 100-level and 300-level courses from the same subject to $0$ conflict in the conflict matrix $M$, regardless of what they were set to before (unless it was "Infinity" - one teacher still cannot teach two courses at the same time). This effectively enforces the assumption that such a course pair will not have any individual student interest. The algorithm is then able to run normally. The results of this change are summarized in Table 2.\\
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lllll}
+Experiment        & Time          & Best & Experimental & \% Optimality \\
+Regular Algorithm & 2.94600010    & 4427 & 3718         & 0.83985       \\
+With Assumption   & 3.00800013542 & 4427 & 3697         & 0.83510      
+\end{tabular}
+\caption{Results of running the algorithm on Haverford Data with and without the added constraint}
+\label{my-label}
+\end{table}
+
+It makes sense that the added constraint adds a bit of time because it iterates over M a second time and modifies the values. This extra complexity could be avoided by checking the courses when costs are initially set, however the focus of this experiment was to evaluate optimality. It is clear that the total preference value only dropped marginally by enforcing this assumption. After seeing this, we wanted to probe the enrollment data further to see which courses contribute to this marginal drop in optimality.
+
+After analyzing the Haverford Data further, we found that in 2014, there were 44 cases of a student concurrently enrolling in a 100-level and 300-level course in the same subject. We also found that these 44 cases were confined to only 13 departments. In many cases, there were a few (1-3) instances for a given department, but some (Political Science, Music, and Psychology) had a higher number of occurences (5-9), as shown in Table 3.\\
+
+\newpage
+\begin{table}[h]
 \centering
 \begin{tabular}{llll}
 Subject & Occurrences & Subject & Occurrences \\
@@ -262,34 +292,10 @@ LING    & 2           &         &             \\
 \label{my-label}
 \end{table}
 
-\subsection{Additional Constraints}
+The results of this experiment show that the registrar can produce relatively optimal schedules by scheduling 100- and 300-level courses from the same subject at the same time (as long as they are not taught by the same teacher). In fact, if the above trends are observed over various years, the registrar may avoid grouping together 100- and 300-level courses from subjects like Political Science and Psychology, but group together 100- and 300-level courses from other subjects and improve the optimality of course scheduling.\\
 
-\begin{enumerate}
-\item{\textbf{Preferencing courses in a student's major/minor}}
 
-When students select which classes they are going to take, it is often most important for them to take courses which count to their major and/or minor. The current student preferences file convention does not sort a given student's desired courses. However, with information on what courses fall into which subjects, as well as what each student's major/minor is, we can sort courses as: [major courses, minor courses, everything else] for each student. With a desire to take $n$ classes, sorted by preference (in descending order), computing initial costs between classes can be achieved according to the following formula:\\
-
-$cost(c_i,c_j) = (n-i)+(n-j)$ where i $<$ j are indices in a student's preference list \\
-
-This way, courses which appear earlier in the list (higher preference major/minor) effectively conflict more than courses which appear later in the list (lower preference). Our algorithm takes this convention into account when it sets costs. When our program is run with the flag "--majors", it looks for a file constructed according to the convention below. The algorithm then re-sorts student preferences to organize them in descending priority. Then, conflicts are computed according to the above formula. Total maximum student preference value is also re-computed along this process because it will be a function of not just whether a student is enrolled in a course, but also of the $priority$ of the courses they are enrolled in. Once a schedule is generated, the student preference value is checked using our added script "is\_valid\_sorted.py". Note that "is\_valid.pl" must still be used to report schedule accuracy, but the value it gives for student preference does not take priorities into account.\\
-
-The added constraints are passed through a file of the following format:\\
-
-majors\\
-1\qquad CHEM ARTS\\
-2\qquad CMSC \\
-...\\
-subjects\\
-CHEM\qquad 12 42\\
-ARTS\qquad  13 11\\
-...\\
-
-Where majors show space-separated major/minors for each student id and subjects show space-separated courses belonging to each subject name.
-
-As we have marked enrollment in a major/minor course as an important contribution to the overall optimality of a course-scheduling, adding this constraint improves overall optimality of the algorithm. The registrar should make efforts to avoid scheduling two courses from the same major at the same time. Furthermore, the registrar should evaluate what common major-minor pairs are and avoid scheduling courses from those two disciplines at the same time.
-\item{Labs / connected courses}
-
-\item{Courses taking more than one time slot}
+\item{}
 
 \item{}
 
