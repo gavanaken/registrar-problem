@@ -308,17 +308,21 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
     return schedule
 
 def formatSchedule(schedule, n, IDtoC, numTeach):
+    prefVal = 0
     f = open('schedule.txt', 'w+')
     
     f.write('Course\tRoom\tTeacher\tTime\tStudents\n')
     for course in range(1, n+1):
         students = [str(stud) for stud in schedule[course]['students']]
+        prefVal += len(students)
+        #print(len(students))
         teacher = schedule[course]['teacher']
         if teacher < 0:
             pass
         else:
             f.write('{0}\t{1}\t{2}\t{3}\t{4}\n'.format(str(IDtoC[course]), str(schedule[course]['room']), str(teacher), str(schedule[course]['time']), ' '.join(students)))
     f.close()
+    return prefVal
 
 def main():
     start = time.time()
@@ -338,8 +342,9 @@ def main():
         M = setLevelCosts(M, constraints.Levels, constraints.Subj, CtoID, IDtoC)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)
-    formatSchedule(schedule, n, IDtoC, numTeach)
-    print("Best preferences value: {0}".format(preferences.maxPref))
+    prefVal = formatSchedule(schedule, n, IDtoC, numTeach)
+    print("Student Preference Value:    {0}".format(prefVal))
+    print("Best Case Student Value:     {0}".format(preferences.maxPref))
     print("--- %s seconds ---" % (time.time() - start))
 
 # note that everything is 1-indexed, but we are keeping the matrix zero-indexed, so decrement when u store and increment when you restore
