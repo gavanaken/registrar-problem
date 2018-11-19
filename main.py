@@ -17,6 +17,8 @@ class Constraints:
         self.teachers = []
         self.IDtoCourse = {}
         self.CoursetoID = {}
+        self.Subj = {} # to be used by constraint #2
+        self.Levels = {} # to be used by constraint #2
         if not re.match("[0-9]+", constraints_raw[cur]): # we dont have nums
             while not constraints_raw[cur].startswith('Classes'):
                 self.rooms.append((constraints_raw[cur].split('\t')[0],int(constraints_raw[cur].split('\t')[1])))
@@ -89,10 +91,40 @@ def parseWeights(Cons, Prefs, weightsFile):
     Prefs.maxPref = newMax
     return Cons, Prefs
 
+def parseLevels(Cons, Prefs, deptLevelFile):
+    # deptLevelFile has courses sorted by subject and level
+    Subj = {}
+    Levels = {}
+    levelLines = open(deptLevelFile, 'r').read().split('\n')
+    cur = 1 # skip the header
+    while levelLines[cur] != 'levels': # we are still encountering subjects
+        if not re.match("[0-9]+", levelLines[cur]): # this is a subject
+            s = levelLines[cur]
+            cur += 1
+            while re.match("[0-9]+", levelLines[cur]): # these are courses
+                Subj[int(levelLines[cur])] = s
+                cur += 1
+    cur += 1 # we hit levels now
+    thisL = -1
+    for l in levelLines[cur:]:
+        if re.match("level", l): # this is a new level
+            thisL = int(l.split(' ')[1])
+        else:
+            if l != '':
+                Levels[int(l)] = thisL
+    
+    Cons.Subj = Subj
+    Cons.Levels = Levels
+    return Cons, Prefs
+            
+
 def parse_special(Cons, Prefs):
     if "--weighted" in sys.argv:
         weightsFile = sys.argv[sys.argv.index("--weighted")+1] # next argument
         return parseWeights(Cons, Prefs, weightsFile)
+    if "--levels" in sys.argv:
+        deptLevelFile = sys.argv[sys.argv.index("--levels")+1] # next argument
+        return parseLevels(Cons, Prefs, deptLevelFile)
     
 def parse_args():
     # find the constraints file
@@ -157,6 +189,25 @@ def setCostSorted(M, preferences, weights):
                 c2 = max(id1, id2)
                 M[id1-1,id2-1]+=weights[stud][i] + weights[stud][j]
     return M
+
+def setLevelCosts(M, levels, subjects, CtoID, IDtoC):
+    n = len(M)
+    for i in range(0,n):
+        for j in range(i+1,n):
+            c1 = IDtoC[i+1]
+            c2 = IDtoC[j+1]
+            if c1 in subjects and c2 in subjects:
+                if subjects[c1] == subjects[c1]:
+                    if c1 in levels and c2 in levels:
+                        if (levels[c1] == 1 and levels[c2] == 3) or (levels[c1] == 3 and levels[c2] == 1):
+                            if M[i][j] != float('inf'):
+                                #print(subjects[c1], subjects[c1])
+                                #print(levels[c1], levels[c2])
+                                #print(M[i][j])
+                                M[i][j] = 0
+    return M
+
+
 
 def createSets(M,numClasses,numRooms,numTimes):
     heapSize = 0
@@ -283,6 +334,8 @@ def main():
         M = setCostSorted(M, preferences.prefLists, preferences.weights)
     else:
         M = setCost(M, preferences.prefLists)
+    if "--levels" in sys.argv:
+        M = setLevelCosts(M, constraints.Levels, constraints.Subj, CtoID, IDtoC)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)
     formatSchedule(schedule, n, IDtoC, numTeach)
