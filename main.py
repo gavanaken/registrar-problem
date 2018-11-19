@@ -49,11 +49,13 @@ class Constraints:
         return str(self.rooms) + '\n' + str(self.teachers)
 
 class Preferences:
-    def __init__(self, preferences_raw, CtoID):
+    def __init__(self, preferences_raw, CtoID, IDtoC):
         self.ptr = 0
         self.numStudents = int(preferences_raw[0].split('\t')[-1])
         self.prefLists = []
         self.maxPref = 0
+        self.CtoID = CtoID
+        self.IDtoC = IDtoC
         cur = 1
         thePrefs = []
         while re.match("[0-9]+", preferences_raw[cur]):
@@ -67,6 +69,64 @@ class Preferences:
         self.prefLists = thePrefs
     def __str__(self):
         return str(self.prefLists)
+
+def sortMajor(Prefs, majorKey, minorKey, subjKey):
+    preflist = Prefs.prefLists
+    CtoID = Prefs.CtoID
+    IDtoC = Prefs.IDtoC
+    newPrefs = []
+    newMax = 0
+    for stud, courses in preflist:
+        mjr = []
+        mnr = []
+        rest = []
+        major = majorKey[stud]
+        minor = minorKey[stud]
+        priority = 1
+        for c in courses:
+            newMax += priority
+            if IDtoC[c] in subjKey[major]:
+                mjr.append(c)
+            else:
+                if IDtoC[c] in subjKey[minor]:
+                    mnr.append(c)
+                else:
+                    rest.append(c)
+            priority += 1
+        newcourses = mjr + mnr + rest
+        newPrefs.append((stud, newcourses))
+    Prefs.prefLists = newPrefs
+    Prefs.maxPref = newMax
+    return Prefs
+
+def parseMajor(Cons, Prefs):
+    majorKey = {}
+    minorKey = {}
+    subjKey = {}
+    majors = open(sys.argv[4], 'r').read().split('\n')
+    cur = 1 # majors
+    while not re.search("subjects", majors[cur]):
+        # studentNum    "major" "minor"
+        stud = int(majors[cur].split('\t')[0])
+        majmin = majors[cur].split('\t')[1].split(' ')
+        maj = majmin[0]
+        if len(majmin) > 1: #we have a minor
+            min = majmin[1]
+        majorKey[stud] = maj
+        minorKey[stud] = min
+        cur += 1
+    cur += 1 # subjects
+    while majors[cur] != "":
+        subj = majors[cur].split('\t')[0]
+        courses = [int(c) for c in (majors[cur].split('\t')[1]).split(' ')]
+        subjKey[subj] = courses
+        cur += 1
+    sortedPref = sortMajor(Prefs, majorKey, minorKey, subjKey)
+    return Cons, sortedPref
+
+def parse_special(Cons, Prefs):
+    if sys.argv[3] == "--major":
+        return parseMajor(Cons, Prefs)
     
 def parse_args():
     # find the constraints file
@@ -74,12 +134,17 @@ def parse_args():
     # from sys.argv
     constraintsFile = sys.argv[1] 
     preferencesFile = sys.argv[2]
-    experiment = sys.argv[3]
     constraints_raw = open(constraintsFile, 'r').read().split('\n')
     preferences_raw = open(preferencesFile, 'r').read().split('\n')
     Cons = Constraints(constraints_raw)
     CtoID = Cons.CoursetoID
-    return Cons, Preferences(preferences_raw, CtoID), experiment
+    IDtoC = Cons.IDtoCourse
+    flag = ""
+    Prefs = Preferences(preferences_raw, CtoID, IDtoC)
+    if len(sys.argv) > 3: # we have special constraints to add
+        flag = sys.argv[3]
+        Cons, Prefs = parse_special(Cons, Prefs)
+    return flag, Cons, Prefs
 
 def setTeach(M, teachers):
     teachers.sort(key=lambda tup: tup[1]) # sort by the teacher
@@ -102,6 +167,20 @@ def setTeach(M, teachers):
     return M
 
 def setCost(M, preferences):
+    for studentTup in preferences:
+        prefs = studentTup[1]
+        n = len(prefs)
+        for i in range(0,n):
+            for j in range(i+1,n):
+                id1 = prefs[i]
+                id2 = prefs[j]
+                c1 = min(id1, id2)
+                c2 = max(id1, id2)
+                M[id1-1,id2-1]+=1
+    return M
+
+
+def setCostSorted(M, preferences):
     for studentTup in preferences:
         prefs = studentTup[1]
         n = len(prefs)
@@ -212,8 +291,8 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n):
             schedule[course]['students'] = schedule[course]['students'][0:roomDict[schedule[course]['room']]]
     return schedule
 
-def formatSchedule(schedule, n, experiment, IDtoC, numTeach):
-    f = open('schedule_{0}.txt'.format(experiment), 'w+')
+def formatSchedule(schedule, n, IDtoC, numTeach):
+    f = open('schedule.txt', 'w+')
     
     f.write('Course\tRoom\tTeacher\tTime\tStudents\n')
     for course in range(1, n+1):
@@ -227,19 +306,21 @@ def formatSchedule(schedule, n, experiment, IDtoC, numTeach):
 
 def main():
     start = time.time()
-    constraints, preferences, experiment = parse_args()
+    flag, constraints, preferences= parse_args()
     teachers = constraints.teachers
-    #print(teachers)
     numTeach = constraints.numTeach
     CtoID = constraints.CoursetoID
     IDtoC = constraints.IDtoCourse
     n = int(constraints.numClass)
     M = np.zeros((n,n))
     M = setTeach(M, teachers)
-    M = setCost(M, preferences.prefLists)
+    if flag == "--major" or flag == "--dist":
+        M = setCostSorted(M, preferences.prefLists)
+    else:
+        M = setCost(M, preferences.prefLists)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)
-    formatSchedule(schedule, n, experiment, IDtoC, numTeach)
+    formatSchedule(schedule, n, IDtoC, numTeach)
     print("Best preferences value: {0}".format(preferences.maxPref))
     print("--- %s seconds ---" % (time.time() - start))
 
