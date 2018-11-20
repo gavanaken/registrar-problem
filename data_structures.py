@@ -2,16 +2,19 @@ class MinBinHeap:
     def __init__(self,s=[],key=lambda x: x):
         self.root = None
         self.key = key
+        self.size = 0
         for item in s:
             self.push(item)
 
     def push(self,item):
+        self.size += 1
         if self.root is None:
             self.root = MinBinNode(item,self.key)
         else:
             self.root.push(item)
 
     def pop(self):
+        self.size -= 1
         out, self.root = self.root.pop()
         return out
 
