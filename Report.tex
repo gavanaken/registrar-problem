@@ -186,8 +186,7 @@ We had a relatively good intuition when approaching this problem that we had to 
 \begin{enumerate}
 \item{How do we quantify the cost of two classes overlapping?}
 \begin{itemize}
-\item{We decided to set it up such that merging courses is a direct function of their collective priorities}
-\item{An artifact of this is that merging classes 1 and 4 has the same cost as merging classes 2 and 3}
+\item{We decided to set it up such that merging courses is a direct function of the number of students who desire to take both}
 \end{itemize}
 \item{After a minimum cost is found and then a merge takes place, the cost of merging any third class with the new set will have to include the total merge cost of the third class with every class already in the set} 
 \begin{itemize}
@@ -251,6 +250,10 @@ Because we suspect that the time of the algorithm is largely dominated by the nu
 \subsection{Design Error}
 After testing the algorithm, we realized that there is a flaw in the design that is capable of producing invalid schedules. If a circumstance is arranged such that the number of rooms is somewhat constrained (relative to the number of classes), the algorithm may find itself backed into a corner due to the \textbf {greedy} approach. At any time, a set combination may be popped from the priority queue which currently has the minimum conflict. However, merging these sets would produce a set which is too large (greater than the number of available rooms) and this combination is ignored. If this occurs continuously, eventually a merge will take place with an infinite conflict score, corresponding to two courses taught by the same teacher. Since there is no way to backtrack and "unmerge" sets, there is no choice but to merge them, which produces an invalid schedule. Again, this is only observed when the number of available rooms is small. For the haverford data, as well as a number of "realistic" random tests, we did not encounter this problem. However, it is important to note that it is present and a direct drawback from the \textbf {greedy} approach.
 
+If we want to ensure that a valid schedule is always formed, we could relax the restriction on the maximum size of a set. Then, all merges will be minimum. For any set which is ultimately larger than the number of available rooms we can randomly remove classes and merge them into one of the other smaller sets. If all other sets produce infinite conflicts, then pick a new class to attempt to move. If there is such a time when all classes in the overfilled time slot conflict infinitely with all other sets, then pick the course with the minimum student interest and remove it altogether (do not schedule it at all).
+
+This may create problems with our optimality for cases where this issue would never arise. At some step in the algorithm, merging the "next best option" may be better than the result of the above process. To handle this, our algorithm could proceed normally and if and only if infinitely conflicting courses are merged, the algorithm starts over following the above design. Ultimately these desicions balance the choice between optimality and complexity and may be case-dependent. 
+
 \section{Additional Constraints}
 
 \begin{enumerate}
@@ -276,7 +279,6 @@ Registering for two courses does not mean that one wants to enroll in them equal
 \item{\textbf{Conflict Assumptions}}\\
 In reality, the registrar does not have student preferences to work with. Therefore, it is impossible to use our algorithm to make scheduling decisions. We can, however, use our algorithm to check the accuracy of an implementable standard for course scheduling. In this case, we wanted to test the assumption that 100-level and 300-level courses in the same department/subject are rarely taken by the one student. To do this, we wrote a script "dept\_level\_data.py" which parses Haverford Enrollment Data to output the subject and level for each course and writes it to a file "DeptLevels.txt". This file can be supplied to our algorithm following the flag "--levels". With this added information, the algorithm sets 100-level and 300-level courses from the same subject to $0$ conflict in the conflict matrix $M$, regardless of what they were set to before (unless it was "Infinity" - one teacher still cannot teach two courses at the same time). This effectively enforces the assumption that such a course pair will not have any individual student interest. The algorithm is then able to run normally. The results of this change are summarized in Table 2.\\
 
-\newpage
 \begin{table}[h]
 \centering
 \begin{tabular}{lllll}
