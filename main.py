@@ -1,4 +1,4 @@
-import sys, re, math, time
+import sys, re, math, time, random
 import numpy as np
 from data_structures import UnionFind, MinBinHeap, LinkedList
 constraintsFile = None
@@ -74,6 +74,32 @@ class Preferences:
     def __str__(self):
         return str(self.prefLists)
 
+def campusAssign():
+    constraint_file = sys.argv[1]
+    constraint_raw = open(constraint_file, 'r').read().replace('\r', '\n').split('\n')
+    index = [i for i,s in enumerate(constraint_raw) if 'Teacher' in s][0]
+    constraint_raw = constraint_raw[index+1:]
+    school_dict = {}
+    same_dict = {}
+    course_list = []
+    for course in constraint_raw:
+        course = course[:course.find('\t')]
+        course_list.append(course)
+    random.shuffle(course_list)
+    same_limit = len(course_list)/5
+    for index,course in enumerate(course_list):
+        if index%2==0:
+            school_dict[course] = 'Bryn Mawr'
+        else:
+            school_dict[course] = 'Haverford'
+        if index < same_limit:
+            if index%2==0:
+                same_dict[course] = course_list[index+1]
+                same_dict[course_list[index+1]] = course
+        else:
+            same_dict[course] = -1
+    return same_dict
+
 
 def parseWeights(Cons, Prefs, weightsFile):
     # weights file is just:
@@ -128,6 +154,8 @@ def parse_special(Cons, Prefs):
         return parseLevels(Cons, Prefs, deptLevelFile)
     if "--normed" in sys.argv:
         return Cons, Prefs
+    if "--schools" in sys.argv:
+        return Cons, Prefs
     
 def parse_args():
     # find the constraints file
@@ -136,7 +164,6 @@ def parse_args():
     constraintsFile = sys.argv[1] 
     preferencesFile = sys.argv[2]
     constraints_raw = open(constraintsFile, 'r').read().replace('\r','\n').split('\n')
-    print(len(constraints_raw))
     preferences_raw = open(preferencesFile, 'r').read().replace('\r','\n').split('\n')
     Cons = Constraints(constraints_raw)
     CtoID = Cons.CoursetoID
@@ -205,13 +232,19 @@ def setLevelCosts(M, levels, subjects, CtoID, IDtoC):
                     if c1 in levels and c2 in levels:
                         if (levels[c1] == 1 and levels[c2] == 3) or (levels[c1] == 3 and levels[c2] == 1):
                             if M[i][j] != float('inf'):
-                                #print(subjects[c1], subjects[c1])
-                                #print(levels[c1], levels[c2])
-                                #print(M[i][j])
                                 M[i][j] = 0
     return M
 
-
+def setSchoolCosts(M, sameDict, CtoID, IDtoC):
+    n = len(M)
+    for i in range(0,n):
+        for j in range(i+1,n):
+            c1 = IDtoC[i+1]
+            c2 = IDtoC[j+1]
+            if sameDict[str(c1)] == str(c2):
+                if M[i][j] != float('inf'):
+                    M[i][j] = 0
+    return M
 
 def createSets(M,numClasses,numRooms,numTimes):
     heapSize = 0
@@ -230,7 +263,6 @@ def createSets(M,numClasses,numRooms,numTimes):
         for ID2 in range(ID1+1,numClasses):
             groupConflicts.push((ID1+1,ID2+1,M[ID1,ID2]))
             #heapSize += 1
-    print(groupConflicts.size)
     
     while timeGroups.numSets > numTimes:
         startNum = timeGroups.numSets
@@ -239,7 +271,6 @@ def createSets(M,numClasses,numRooms,numTimes):
             heapSize -= 1
         except AttributeError as e:
             print (timeGroups.groups())
-            print ()
             raise e
         rep1, rep2 = groupReps[ID1], groupReps[ID2]
         if rep1 is None or rep2 is None:
@@ -330,7 +361,6 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n, weighted, nor
         if enrollment_limit < len(schedule[course]['students']):
             schedule[course]['students'] = set(list(schedule[course]['students'])[:enrollment_limit])
 
-    print(overenrolled_students)
     if normed:
         for student in overenrolled_students:
             prefs = prefDict[student]
@@ -346,7 +376,12 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n, weighted, nor
 
 def formatSchedule(schedule, n, IDtoC, numTeach):
     prefVal = 0
-    f = open('schedule.txt', 'w+')
+    # did we receive an output file?
+    output = 'schedule.txt'
+    if len(sys.argv) > 3:
+        if sys.argv[3].endswith('.txt'):
+            output = sys.argv[3]
+    f = open(output, 'w+')
     
     f.write('Course\tRoom\tTeacher\tTime\tStudents\n')
     for course in range(1, n+1):
@@ -377,6 +412,9 @@ def main():
         M = setCost(M, preferences.prefLists)
     if "--levels" in sys.argv:
         M = setLevelCosts(M, constraints.Levels, constraints.Subj, CtoID, IDtoC)
+    if "--schools" in sys.argv:
+        sameDict = campusAssign()
+        M = setSchoolCosts(M, sameDict, CtoID, IDtoC)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
     weighted = "--weighted" in sys.argv
     normed = "--normed" in sys.argv
