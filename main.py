@@ -325,7 +325,7 @@ def createSchedule(teachers, classGroups, prefMaster, roomList, n, weighted, nor
                 else:
                     overenrolled_students[student] -= 1
             if student in overenrolled_students or (not normed):
-                del schedule[course]['students'][student]
+                schedule[course]['students'].remove(student)
             i += 1
         if enrollment_limit < len(schedule[course]['students']):
             schedule[course]['students'] = set(list(schedule[course]['students'])[:enrollment_limit])
