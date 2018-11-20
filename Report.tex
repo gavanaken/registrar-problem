@@ -207,31 +207,40 @@ This algorithm is {\bf greedy} because each time work is done, it generally foll
 \subsection{Implementation}
 We chose to implement this algorithm in Python. Much of the implementation followed directly from our design and pseudocode. We were able to utilize the {\it unionfind} package hosted on {\it https://pypi.org} (licensed to The Python Software Foundation). We needed to modify the implementation slightly to allow for sets to contain more information (class IDs). We also implemented our own min heap to serve as the priority queue. There was one key addition to the algorithm we noticed when attempting to implement. When a set is popped from the priority queue, it's possible that it has already been {\it unioned} with a previously popped set (which would have then been pushed back onto the queue). Thus, we keep track of what has been {\it unioned} and if we pop a set that has been {\it unioned} already, we throw it away and continue with the next set on the queue. This change has been added to our description and pseudocode.
 
-We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. \\
+We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. 
 
 \section{Experimental Analysis}
 \subsection{Performance}
-The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with greater than 80\% of students ultimately enrolled in their preferred classes. 
-
-We also tested the algorithm's performance on the data from Haverford (experiment number 5).
-
+The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with a mean of 94\% of students (and a $10^{th}$ percentile of 92\% of students) ultimately enrolled in their preferred classes.
 
 \begin{table}[h]
 \centering
 \begin{tabular}{lllllllll}
-no. & Classes & Students & Times & Rooms & Time (sec) & Best  & Experimental & \% Optimality \\
-1             & 20         & 100         & 5        & 5        & 0.013000011    & 400   & 332          & 0.83          \\
-2             & 100        & 2000        & 10       & 20       & 0.36500001     & 8000  & 7066         & 0.88325       \\
-3             & 100        & 1000        & 10       & 20       & 0.377999783    & 4000  & 3562         & 0.8905        \\
-4             & 500        & 10000       & 60       & 50       & 6.296999931    & 40000 & 39100        & 0.9775        \\
-5            & 365            & 1177            & 60       & 50      & 2.94600010         & 4427      & 3718             & 0.83985    \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
-              &            &             &          &          &                &       &              &               \\
+no. & Classes & Students & Times & Rooms & Time (sec) & Best   & Experimental & \% Optimality \\
+1   & 20      & 100      & 5     & 10    & 0.0094     & 400    & 324          & 0.81         \\
+2   & 20      & 100      & 10    & 5     & 0.0060     & 400    & 381          & 0.9525       \\
+3   & 20      & 200      & 5     & 10    & 0.0127     & 800    & 637          & 0.79625      \\
+4   & 20      & 200      & 10    & 5     & 0.0111     & 800    & 758          & 0.9475       \\
+5   & 40      & 200      & 10    & 20    & 0.0349     & 800    & 749          & 0.93625      \\
+6   & 40      & 200      & 20    & 10    & 0.0220     & 800    & 772          & 0.965        \\
+7   & 40      & 400      & 10    & 20    & 0.0390     & 1600   & 1469         & 0.918125     \\
+8   & 40      & 400      & 20    & 10    & 0.0276     & 1600   & 1560         & 0.975        \\
+9   & 80      & 400      & 30    & 30    & 0.0904     & 1600   & 1522         & 0.95125      \\
+10  & 80      & 600      & 30    & 30    & 0.1016     & 2400   & 2312         & 0.963333333  \\
+11  & 100     & 600      & 30    & 30    & 0.1567     & 2400   & 2286         & 0.9525       \\
+12  & 100     & 800      & 30    & 30    & 0.1595     & 3200   & 3073         & 0.9603125    \\
+13  & 100     & 1000     & 30    & 30    & 0.1638     & 4000   & 3863         & 0.96575      \\
+14  & 100     & 2000     & 30    & 30    & 0.1869     & 8000   & 7843         & 0.980375     \\
+15  & 200     & 1000     & 30    & 30    & 0.6815     & 4000   & 3752         & 0.938        \\
+16  & 200     & 2000     & 30    & 30    & 0.7009     & 8000   & 7679         & 0.959875     \\
+17  & 200     & 3000     & 30    & 30    & 0.7316     & 12000  & 11701        & 0.975083333  \\
+18  & 500     & 1000     & 60    & 50    & 5.1768     & 4000   & 3714         & 0.9285       \\
+19  & 500     & 2000     & 60    & 50    & 5.1586     & 8000   & 7536         & 0.942        \\
+20  & 500     & 5000     & 60    & 50    & 5.1397     & 20000  & 19257        & 0.96285      \\
+21  & 500     & 10000    & 60    & 50    & 5.2976     & 40000  & 39061        & 0.976525     \\
+22  & 2000    & 40000    & 60    & 300   & 117.0473   & 160000 & 156211       & 0.97631875  
 \end{tabular}
-\caption{Results of testing the algorithm with various input parameters}
+\caption{Results of running the algorithm with various parameters}
 \label{my-label}
 \end{table}
 \subsection{Design Error}
@@ -242,7 +251,7 @@ After testing the algorithm, we realized that there is a flaw in the design that
 \begin{enumerate}
 \item{\textbf{Weighted Preferences}}
 
-When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic persuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occuring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following forumla:\\
+When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic persuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occurring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following forumla:\\
 
 $cost(c_i,c_j) = weight[c_i] + weight[c_j]$
 

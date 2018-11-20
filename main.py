@@ -7,6 +7,7 @@ experiment = 0
 
 class Constraints:
     def __init__(self, constraints_raw):
+        constraints_raw.append('\n') # workaround for if files don't have newlines
         self.numTimes = int(constraints_raw[0].split('\t')[-1])
         cur = 1
         while not constraints_raw[cur].startswith('Room'):
@@ -132,8 +133,9 @@ def parse_args():
     # from sys.argv
     constraintsFile = sys.argv[1] 
     preferencesFile = sys.argv[2]
-    constraints_raw = open(constraintsFile, 'r').read().split('\n')
-    preferences_raw = open(preferencesFile, 'r').read().split('\n')
+    constraints_raw = open(constraintsFile, 'r').read().replace('\r','\n').split('\n')
+    print(len(constraints_raw))
+    preferences_raw = open(preferencesFile, 'r').read().replace('\r','\n').split('\n')
     Cons = Constraints(constraints_raw)
     CtoID = Cons.CoursetoID
     IDtoC = Cons.IDtoCourse
@@ -225,6 +227,8 @@ def createSets(M,numClasses,numRooms,numTimes):
     for ID1 in range(0,numClasses-1):
         for ID2 in range(ID1+1,numClasses):
             groupConflicts.push((ID1+1,ID2+1,M[ID1,ID2]))
+            #heapSize += 1
+    print(groupConflicts.size)
     
     while timeGroups.numSets > numTimes:
         startNum = timeGroups.numSets
