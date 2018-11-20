@@ -211,8 +211,7 @@ We chose to implement the final schedule as a nested dictionary: each course num
 
 \section{Experimental Analysis}
 \subsection{Performance}
-The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except in the case of experiment 4 which had a large input of 500 classes and 10,000 students. Furthermore, many of the resultant schedules were relatively optimal, with a mean of 94\% of students (and a $10^{th}$ percentile of 92\% of students) ultimately enrolled in their preferred classes.
-
+The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except for a few with large inputs. Furthermore, many of the resultant schedules were relatively optimal, with a mean of 94\% of students (and a $10^{th}$ percentile of 92\% of students) ultimately enrolled in their preferred classes.
 \begin{table}[h]
 \centering
 \begin{tabular}{lllllllll}
@@ -243,13 +242,19 @@ no. & Classes & Students & Times & Rooms & Time (sec) & Best   & Experimental & 
 \caption{Results of running the algorithm with various parameters}
 \label{my-label}
 \end{table}
+Because we suspect that the time of the algorithm is largely dominated by the number of classes ($n$), we decided to plot class size against running time for the various experiments above. According to our timing analysis the algorithm should run $O(n^2logn)$. For this reason, we plotted the number of classes against the square root of the time to try and observe a linear relationship. Because of the nature of the way we increased class number, we decided to report it on a log scale. The results of this can be seen in Figure 1. We observe a relatively linear relationship suggesting that the running time is squared in the number of classes.
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{"Timing Data".png}
+\centering
+\caption{The square of running time as a function of the number of classes (log scale) for the experimental results.}
+\end{figure}
 \subsection{Design Error}
 After testing the algorithm, we realized that there is a flaw in the design that is capable of producing invalid schedules. If a circumstance is arranged such that the number of rooms is somewhat constrained (relative to the number of classes), the algorithm may find itself backed into a corner due to the \textbf {greedy} approach. At any time, a set combination may be popped from the priority queue which currently has the minimum conflict. However, merging these sets would produce a set which is too large (greater than the number of available rooms) and this combination is ignored. If this occurs continuously, eventually a merge will take place with an infinite conflict score, corresponding to two courses taught by the same teacher. Since there is no way to backtrack and "unmerge" sets, there is no choice but to merge them, which produces an invalid schedule. Again, this is only observed when the number of available rooms is small. For the haverford data, as well as a number of "realistic" random tests, we did not encounter this problem. However, it is important to note that it is present and a direct drawback from the \textbf {greedy} approach.
 
 \section{Additional Constraints}
 
 \begin{enumerate}
-\item{\textbf{Weighted Preferences}}
+\item{\textbf{Weighted Preference Costs}}
 
 When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic persuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occurring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following forumla:\\
 
