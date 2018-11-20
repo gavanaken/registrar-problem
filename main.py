@@ -125,6 +125,8 @@ def parse_special(Cons, Prefs):
     if "--levels" in sys.argv:
         deptLevelFile = sys.argv[sys.argv.index("--levels")+1] # next argument
         return parseLevels(Cons, Prefs, deptLevelFile)
+    if "--normed" in sys.argv:
+        return Cons, Prefs
     
 def parse_args():
     # find the constraints file
@@ -270,41 +272,72 @@ def createSets(M,numClasses,numRooms,numTimes):
     #print(timeGroups.groups())
     return timeGroups.groups()
 
-def createSchedule(teachers, classGroups, prefMaster, roomList, n):
+def createSchedule(teachers, classGroups, prefMaster, roomList, n, weighted, normed):
     #create empty schedule
     # Note that at this point, courses are represented by IDs, unpack in formatSchedule
     schedule = {}
+    overenrolled_students = {}
+    prefDict = {}
+    for preflist in prefMaster:
+        prefDict[preflist[0]] = preflist[1]
+    
     for (course, prof) in teachers:
-        schedule[course] = {'room':0, 'teacher':0, 'time':0, 'students':[]}
-    #assign teachers to courses
-    for (course, prof) in teachers:
-        schedule[course]['teacher'] = prof
+        schedule[course] = {'room':0, 'teacher':prof, 'time':0, 'students':set()}
     #assign times so that grouped courses are at the same time
     for idx2,group in enumerate(classGroups, 1):
         for course in group:
             schedule[course]['time'] = idx2
+    
     #fill out students for each course, assuming all can fit
-    for preflist in prefMaster:
-        idx = preflist[0]
-        prefs = preflist[1]
+    for idx,prefs in prefDict.items():
         times = []
+        numCourses = 0
         for course in prefs:
             if schedule[course]['time'] not in times:
                 times.append(schedule[course]['time'])
-                schedule[course]['students'].append(idx)
+                schedule[course]['students'].add(idx)
+                numCourses += 1
+                if numCourses > 4:
+                    overenrolled_students[idx] = numCourses
+                
     #assign times and rooms to courses (bigger classes get bigger rooms)
     sorted_rooms = sorted(roomList, key=lambda kv: kv[1], reverse=True)
     for group in classGroups:
         sorted_group = sorted(group, key=lambda c: len(schedule[c]['students']), reverse=True)
         for idx3,course in enumerate(sorted_group):
                 schedule[course]['room'] = sorted_rooms[idx3][0]
+                
     #make sure there are not more students in the class than the room it is assigned to can fit
     roomDict = dict(roomList)
     for course in range(1, n+1):
-        if(len(schedule[course]['students']) > roomDict[schedule[course]['room']]):
-            #remove the students that don't fit from the end of the 'students' list for this course
-            #NOTE: This repetitively shortchanges higher-numbered students, because we remove students we can't handle from the END of the list.
-            schedule[course]['students'] = schedule[course]['students'][0:roomDict[schedule[course]['room']]]
+        enrollment_limit = roomDict[schedule[course]['room']]
+        i = 0
+        student_list = list(schedule[course]['students'])
+        while i < len(student_list) and enrollment_limit < len(schedule[course]['students']):
+            student = student_list[i]
+            if student in overenrolled_students:
+                if overenrolled_students[student] == 5:
+                    del overenrolled_students[student]
+                else:
+                    overenrolled_students[student] -= 1
+            if student in overenrolled_students or (not normed):
+                del schedule[course]['students'][student]
+            i += 1
+        if enrollment_limit < len(schedule[course]['students']):
+            schedule[course]['students'] = set(list(schedule[course]['students'])[:enrollment_limit])
+
+    print(overenrolled_students)
+    if normed:
+        for student in overenrolled_students:
+            prefs = prefDict[student]
+            for i in range(overenrolled_students[student]-4):
+                if weighted:
+                    course = prefs[-i-1]
+                else:
+                    course = prefs[i]
+                if student in schedule[course]['students']:
+                    schedule[course]['students'].remove(student)
+            
     return schedule
 
 def formatSchedule(schedule, n, IDtoC, numTeach):
@@ -341,7 +374,9 @@ def main():
     if "--levels" in sys.argv:
         M = setLevelCosts(M, constraints.Levels, constraints.Subj, CtoID, IDtoC)
     classGroups = createSets(M,n,constraints.numRooms,constraints.numTimes)
-    schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n)
+    weighted = "--weighted" in sys.argv
+    normed = "--normed" in sys.argv
+    schedule = createSchedule(teachers, classGroups, preferences.prefLists, constraints.rooms, n, weighted, normed)
     prefVal = formatSchedule(schedule, n, IDtoC, numTeach)
     print("Student Preference Value:    {0}".format(prefVal))
     print("Best Case Student Value:     {0}".format(preferences.maxPref))
