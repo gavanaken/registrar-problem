@@ -21,24 +21,30 @@
 \maketitle
 
 \section{Description}
-This algorithm works by assigning conflict scores to each pair of classes based on teacher assignments and student preferences and assigning each class to be the sole member of a set, then continuously merging sets of classes (designating them to occupy the same time slot) in a greedy manner, on the basis of lowest total set conflict scores. \\
+Our algorithm assigns conflict scores to each pair of classes based on teacher assignments and student preferences. If two classes are in a student's preference list, then their conflict score is incremented by 1. If two classes are taught by the same professor, then their conflict score is set to infinite. We store these scores in a 2D array, where each column and each row represent a class. As a direct result, we only use the upper triangle of the 2D array. To ensure that we only need to use the upper triangle of the matrix, we will adopt the convention of indexing such that $i < j$, where $i$ is the row index and $j$ is the column index. A union-find object is used to represent class groups, with each class group eventually corresponding to all the classes scheduled in a given time slot.
 
-Call the number of classes as $n$. Initialize a "conflict matrix" $M$, an $n \times n$ 2-D matrix for storing conflict scores, setting all values to 0. Additionally, create a union-find object $S$ and assign each class to its own set within $S$. For each teacher, each pair of classes they teach ($c$, $c^\prime$) definitely cannot occupy the same time slot, so the conflict score $M[c][c^\prime]$ is set to {\it Infinity} (or some sufficiently large number). Then each student's preference list is iterated through, and for each class pair $(c, c^\prime)$ in a given student's preference list, where $c$ is at index $i$ and $c^\prime$ is at index $j$, increment $M[c_i][c_j]$  by 1. To ensure that we only need to use the upper triangle of the matrix, we will adopt the convention of always indexing such that $i < j$. \\
+Initially, all classes are in their own sets. A priority queue of class pairs, organized by their conflict score, allows us to union the class groups with minimum conflict score. This is reflected in the array by selecting one column and corresponding row to correspond to the conflict scores of the newly merged class group (as opposed to actually re-sizing the array by removing columns and rows). It is worth noting that there are a few subtleties with this treatment. First, it is common that one or both sets specified to be merged have already been merged with some other set, in which case the pair of class groups to be merged is disregarded (i.e. the union and thus the merge do not occur). Second, if the number of classes in a class group created by a merge is larger than the number of classrooms, then the merge is disregarded (as we cannot have, say, 20 classes at time 1 when there are less than 20 rooms).
 
-Create a priority queue $P$ with a min heap to keep track of the pair of sets with lowest conflict score, and add each cell not along the diagonal to $P$. Sets are identified with unique group ID numbers, and as new sets are created by merging, they are given incrementally larger group ID numbers. While the number of sets in $S$ is greater than the number of class times, classes still haven't been grouped into sufficiently few time slots, so merging must continue. \\
+After a merge, conflict scores are re-evaluated, as every class group has a new conflict score with the merged group that is equal to the sum of the conflict scores with each component class group. For example, if groups $s_i$ and $s_j$ are merged to form $s_k$, then every other group, $s_o$, now has a conflict score with $s_k$ equal to the sum of its conflict with $s_i$ and its conflict with $s_j$. Each merge reduces the number of class groups by 1; once the number of class groups is equal to the number of time slots, each class group can be assigned to a time slot.
 
- At each step, find the sets $s_i$, $s_j$ with the minimum conflict score by popping from $P$. It is a common occurrence that one or both sets specified by $s_i$ and $s_j$ no longer "exist" - that is, the sets they represent have already been merged with some other set, in which case the pair is disregarded. Otherwise, an attempt is made to merge the sets. If $|s_i| + |s_j|$ is less than the number of classrooms, the sets can be merged without creating too large a time slot, so the sets are merged, otherwise that pair is also simply disregarded. When a merge takes place between $s_i$ and $s_j$ to form set $s_k$, the conflict score of any other set $s_o$ with $s_k$ should be the sum of $s_o$'s conflict scores with $s_i$ and $s_j$, since it now conflicts with all the classes in both, so row and column $j$ are added to row and column $i$, and $i$ is designated as the representative row/column of group $s_k$. Row/column $j$ continue to exist to avoid matrix resizing, but they are never again looked at. The $i^{th}$ row and column now represent the set $s_k$, which contains all the classes originally in either set $s_i$ or $s_j$. Join the two sets in $S$ as well.
-
-Each iteration reduces the number of sets in $S$ by one. Once the number of sets in $S$ is equal the number of time slots, each class set can be arbitrarily assigned to a time slot.
-
-Finally, we initialize a dictionary, S, whose keys are course numbers and values are dictionaries containing room, time, teacher, and student list for each course. We fill out this dictionary from the constraints such that:
+Finally, we create the schedule in a dictionary whose keys are course numbers and values are dictionaries containing room, time, teacher, and the student list for each course. We fill out this dictionary from the constraints such that:
 \begin{enumerate}
     \item Each class group has a time, so every class in that group gets that time slot.
     \item The larger classes in a given class group get the larger rooms (this requires some sorting).
-    \item The number of students in a class does not exceed the capacity of the assigned room (a simple check at the end of schedule creation).
+    \item The number of students in a class does not exceed the capacity of the assigned room. If this occurs, we remove students until they fit the room capacity.
 \end{enumerate}
 
-Teacher conflicts cannot arise in schedule creation because the handling of teacher conflicts is baked into the groups created from the conflict matrix. In this way, we create a valid schedule from our class groups.
+In addition to the basic functioning of our algorithm, we handled several extensions, which we briefly describe here (for more depth, see the extensions section). First, we allowed students to weight their courses. In this way, students may indicate which courses they prefer the most. We implemented this by parsing an additional weights input file and incrementing the conflict score of a class pair by the sum of the component classes' weights when they appear in a student's preference list.
+
+Second, we assumed minimum conflict between 100- and 300-level courses in the same department. We accomplished this by parsing an additional department-and-levels input file and merging 100- and 300- level courses in the same department first.
+
+Third, we implemented a system for removing students from over-enrolled classes based on their preferences, so that students with lower preference for the class would be removed first. CONOR HOW DID YOU DO THIS.
+
+Fourth, we implemented a system for removing students from over-enrolled classes based on the number of classes for which each student is enrolled, so that students enrolled in more classes would be removed first. CONOR HOW DID YOU DO THIS.
+
+Fifth, we allowed for Bryn Mawr data and assumed no conflict between Haverford and Bryn Mawr courses which satisfy the same requirement (e.g. Analysis of Algorithms).  While we tested this feature on data we generated, the implementation would allow for two dictionaries to be passed in as input, one whose keys are course numbers and values are the campus at which the course is being taught, and one whose keys are course numbers and value are other courses to which the key-course is equivalent.
+
+Sixth and finally, we allowed for arbitrarily large student preference lists, as well as arbitrarily large course lists for professors. This did not require additional implementation, as our base algorithm iterated through all courses in each student preference list and all courses in each professor's course list.
 
 \section{Pseudocode}
 \begin{algorithm}
@@ -53,7 +59,6 @@ $M$ = setTeach($M$, $Teachers$);
 $M$ = setCost($M$, $Preferences$);
 
 createSets(M);
-
 
 }
 \end{algorithm}
@@ -201,16 +206,23 @@ We had a relatively good intuition when approaching this problem that we had to 
 \item{Because of this, we decided to check to see if this condition is broken and if so, skip that merge}
 \end{itemize}
 \end{enumerate}
-This algorithm is {\bf greedy} because each time work is done, it generally follows a simple rule: merge sets with the lowest merge cost (if a merge is valid). This algorithm is not too different from constructing a minimum spanning tree using Kruskal's algorithm. Classes can be thought of as nodes in a graph and merge cost can be thought of as the weight of the edge between nodes. Similar to a minimum spanning tree, minimum edge weights are selected as the sets are constructed (merged). 
+
+This algorithm is {\bf greedy} because each time work is done, it generally follows a simple rule: merge sets with the lowest merge cost (if a merge is valid). Interestingly enough, creating one class group to be put in a time slot is similar to constructing a minimum spanning tree using Kruskal's algorithm. Classes can be thought of as nodes in a graph and merge cost can be thought of as the weight of the edge between nodes. Similar to a minimum spanning tree, minimum edge weights are selected as the sets are constructed (merged).
+
+One very important pitfall of our algorithm to note is that it can schedule professors to teach different courses at the same time. Above, the third note on the difficulty of the algorithm states that we initialize the conflict score of class pairs with professor conflicts to infinite. When designing the algorithm, we believed that, since infinite should never be the cheapest merge, we \textit{should} never have two courses taught by the same professor in the same time slot. However, the algorithm is greedy, and does not backtrack, so it can run into a problem where the only available merge has an associated cost of infinite, and thus, infinite \textit{is} the cheapest merge. This arises because of the fourth note on the difficulty of designing an algorithm: if a merge produces a class group with more classes than there are rooms, then the merge is ignored. Hence, if every non-infinite merge creates a class group that is too large, then the algorithm is forced to make a merge with infinite cost, as it must reduce the number of class groups to the number of time slots available.
+
+This is a large issue, as the algorithm fails to produce a valid schedule when this error occurs. For more information regarding a potential solution to this error, refer to the \textit{Design Error} section.
+
+A final note on our algorithm comes after having seen the presentations of other groups: Lizzy Chan, Tessa Pham, and Xinyi Wang presented an algorithm which utilized a dictionary keyed by class pairs to store their conflict costs, and we all agree that, were we to start the project over again, using a dictionary to store conflict costs would be cleaner and more intuitive than using the upper triangle of a 2D array.
 
 \subsection{Implementation}
 We chose to implement this algorithm in Python. Much of the implementation followed directly from our design and pseudocode. We were able to utilize the {\it unionfind} package hosted on {\it https://pypi.org} (licensed to The Python Software Foundation). We needed to modify the implementation slightly to allow for sets to contain more information (class IDs). We also implemented our own min heap to serve as the priority queue. There was one key addition to the algorithm we noticed when attempting to implement. When a set is popped from the priority queue, it's possible that it has already been {\it unioned} with a previously popped set (which would have then been pushed back onto the queue). Thus, we keep track of what has been {\it unioned} and if we pop a set that has been {\it unioned} already, we throw it away and continue with the next set on the queue. This change has been added to our description and pseudocode.
 
-We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup. 
+We chose to implement the final schedule as a nested dictionary: each course number is a key that corresponds to a dictionary value; this 'inner' dictionary contains keys whose corresponding values are the teacher, time, room, and student list for the course. We chose this implementation because the schedule information will be accessed often (by students, teachers, and the registrar alike) once it is computed, and the hash table behind Python's built-in dictionary allows for average-case O(1) lookup.
 
 \section{Experimental Analysis}
 \subsection{Performance}
-The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varried. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except for a few with large inputs. Furthermore, many of the resultant schedules were relatively optimal, with a mean of 94\% of students (and a $10^{th}$ percentile of 92\% of students) ultimately enrolled in their preferred classes.
+The algorithm was tested using a number of different random test cases where the number of classes, students, times, and rooms were varied. These results are summarized in Table 1. In many cases the algorithm quickly produced a schedule (in less than 1 second), except for a few with large inputs. Furthermore, many of the resulting schedules were relatively optimal, with a mean of 94\% of students (and a $10^{th}$ percentile of 92\% of students) ultimately enrolled in their preferred classes.
 \begin{table}[h]
 \centering
 \begin{tabular}{lllllllll}
@@ -247,6 +259,7 @@ Because we suspect that the time of the algorithm is largely dominated by the nu
 \centering
 \caption{The square of running time as a function of the number of classes (log scale) for the experimental results.}
 \end{figure}
+
 \subsection{Design Error}
 After testing the algorithm, we realized that there is a flaw in the design that is capable of producing invalid schedules. If a circumstance is arranged such that the number of rooms is somewhat constrained (relative to the number of classes), the algorithm may find itself backed into a corner due to the \textbf {greedy} approach. At any time, a set combination may be popped from the priority queue which currently has the minimum conflict. However, merging these sets would produce a set which is too large (greater than the number of available rooms) and this combination is ignored. If this occurs continuously, eventually a merge will take place with an infinite conflict score, corresponding to two courses taught by the same teacher. Since there is no way to backtrack and "unmerge" sets, there is no choice but to merge them, which produces an invalid schedule. Again, this is only observed when the number of available rooms is small. For the haverford data, as well as a number of "realistic" random tests, we did not encounter this problem. However, it is important to note that it is present and a direct drawback from the \textbf {greedy} approach.
 
@@ -259,7 +272,7 @@ This may create problems with our optimality for cases where this issue would ne
 \begin{enumerate}
 \item{\textbf{Weighted Preference Costs}}
 
-When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic persuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occurring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following forumla:\\
+When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic pursuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occurring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following formula:\\
 
 $cost(c_i,c_j) = weight[c_i] + weight[c_j]$
 
@@ -274,7 +287,7 @@ student\qquad weights \\
 
 Where weights are space-separated weights (totalling 10) for each student ordered the same as the student's list of classes in the preferences file
 
-Registering for two courses does not mean that one wants to enroll in them equally. Thus, it is important to consider which courses would be most problematic to overlap. For this reason, adopting this added constraint improves the overall optimality of the algorithm in computing high preference schedules. The take away from this design change is that when scheduling courses, the registrar should take into account the (implicit) preferences of students. For example, if there are a lot of students who are computer science majors / math minors, a number of students will highly prefer taking those courses concurrently and they shouldn't be scheduled together. Similarly, if a number of junior computer science majors have outstandind distribution requirements in the humanities, the registrar should ensure that not too many CS courses are scheduled on top of humanities courses.\\
+Registering for two courses does not mean that one wants to enroll in them equally. Thus, it is important to consider which courses would be most problematic to overlap. For this reason, adopting this added constraint improves the overall optimality of the algorithm in computing high preference schedules. The take away from this design change is that when scheduling courses, the registrar should take into account the (implicit) preferences of students. For example, if there are a lot of students who are computer science majors / math minors, a number of students will highly prefer taking those courses concurrently and they shouldn't be scheduled together. Similarly, if a number of junior computer science majors have outstanding distribution requirements in the humanities, the registrar should ensure that not too many CS courses are scheduled on top of humanities courses.\\
 
 \item{\textbf{Conflict Assumptions}}\\
 In reality, the registrar does not have student preferences to work with. Therefore, it is impossible to use our algorithm to make scheduling decisions. We can, however, use our algorithm to check the accuracy of an implementable standard for course scheduling. In this case, we wanted to test the assumption that 100-level and 300-level courses in the same department/subject are rarely taken by the one student. To do this, we wrote a script "dept\_level\_data.py" which parses Haverford Enrollment Data to output the subject and level for each course and writes it to a file "DeptLevels.txt". This file can be supplied to our algorithm following the flag "--levels". With this added information, the algorithm sets 100-level and 300-level courses from the same subject to $0$ conflict in the conflict matrix $M$, regardless of what they were set to before (unless it was "Infinity" - one teacher still cannot teach two courses at the same time). This effectively enforces the assumption that such a course pair will not have any individual student interest. The algorithm is then able to run normally. The results of this change are summarized in Table 2.\\
@@ -292,7 +305,7 @@ With Assumption   & 3.00800013542 & 4427 & 3697         & 0.83510
 
 It makes sense that the added constraint adds a bit of time because it iterates over M a second time and modifies the values. This extra complexity could be avoided by checking the courses when costs are initially set, however the focus of this experiment was to evaluate optimality. It is clear that the total preference value only dropped marginally by enforcing this assumption. After seeing this, we wanted to probe the enrollment data further to see which courses contribute to this marginal drop in optimality.
 
-After analyzing the Haverford Data further, we found that in 2014, there were 44 cases of a student concurrently enrolling in a 100-level and 300-level course in the same subject. We also found that these 44 cases were confined to only 13 departments. In many cases, there were a few (1-3) instances for a given department, but some (Political Science, Music, and Psychology) had a higher number of occurences (5-9), as shown in Table 3.\\
+After analyzing the Haverford Data further, we found that in 2014, there were 44 cases of a student concurrently enrolling in a 100-level and 300-level course in the same subject. We also found that these 44 cases were confined to only 13 departments. In many cases, there were a few (1-3) instances for a given department, but some (Political Science, Music, and Psychology) had a higher number of occurrences (5-9), as shown in Table 3.\\
 
 \begin{table}[h]
 \centering
@@ -312,12 +325,12 @@ LING    & 2           &         &             \\
 
 The results of this experiment show that the registrar can produce relatively optimal schedules by scheduling 100- and 300-level courses from the same subject at the same time (as long as they are not taught by the same teacher). In fact, if the above trends are observed over various years, the registrar may avoid grouping together 100- and 300-level courses from subjects like Political Science and Psychology, but group together 100- and 300-level courses from other subjects and improve the optimality of course scheduling.\\
 
-
 \item{}
 
 \item{}
 
-\item{}
+\item{\textbf{Bryn Mawr and Haverford Classes}}
+It is the often the case at Haverford and Bryn Mawr that students sign up for two classes which they will never take concurrently. One such example is when two versions of the same course are offered at Haverford and Bryn Mawr. In this case, we implemented immediate grouping for any such classes which are deemed 'equal' by the registrar. This approach has clear advantages: the registrar can schedule some classes at the same time without worrying that any students will need to take them concurrently. However, this solution does not come without cost. Consider, for example, the case in which a student's higher-preferred course conflicts with the single time slot assigned to both versions of a course the student wants to take. Scheduling both versions at the same time prevents this student from taking \textit{either} version. If the two versions were scheduled at different times, then the student's conflict with one time slot could potentially be resolved by scheduling them in the version whose time slot does not conflict. In light of this hidden cost, which is not necessarily reflected in our conflict cost representation of the problem, exploration of this extension has led us to recommend that the registrar \textit{not} schedule equivalent versions of a class in the same time slot.
 
 \end{enumerate}
 
