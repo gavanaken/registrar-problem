@@ -277,6 +277,10 @@ This may create problems with our optimality for cases where this issue would ne
 We implemented a number of new constraints, most as options to be triggered by CLI flags. The flags include "--weighted", "--normed", "--levels", and "--schools" - their usage will be noted.
 
 \begin{enumerate}
+\item{\textbf{Remove Course Limits}}
+
+One additional feature we implemented universally was to remove the rigidity in how many courses professors could teach, and students could request. Previously, professors were required to teach two courses and students were required to request four, but we wrote the algorithm such that both quantities were toally flexible. This was necessary for analyzing Haverford data, in which professors could teach one to three courses and students could request three to nine courses. It also bore on our additional student overenrollment feature, which would not be applicable unless students could request more than 4 courses.
+
 \item{\textbf{Weighted Preference Costs}}
 
 When students select which classes they are going to take, it is rarely the case that taking each course bears equal importance to their academic pursuits. An example of this could be courses a student needs for their major or minor. Another example may be courses a student needs to take in order to fulfill remaining distribution requirements. The current student preferences file convention does not weight a given student's desired courses, it assumes that any combination of courses occurring at the same time is equally problematic. However, if we enforce that students sort their courses in order of preference and weight each one up to a total constant weight value (we chose 10), then we can compute the cost of merging according to the following formula:\\
